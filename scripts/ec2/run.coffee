@@ -88,3 +88,17 @@ module.exports = (robot) ->
         message = messages.join "\n"
         msg.send message
 
+
+        params =
+          Resources: [id]
+          Tags: [
+            Key: 'Name', Value: 'HackMe'
+          ]
+
+        ec2.createTags params, (err, res) ->
+            if err
+              msg.send "Error: #{err}"
+            else
+              msg.send "Success to create a tag"
+              msg.send util.inspect(res, false, null)
+
