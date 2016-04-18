@@ -92,7 +92,13 @@ module.exports = (robot) ->
         params =
           Resources: [id]
           Tags: [
-            Key: 'Name', Value: 'HackMe'
+            { Key: 'Name', Value: 'awsdevmtfl01' },
+            { Key: 'Application', Value: 'cf.gov, Qu, Extranet' },
+            { Key: 'Creator', Value: 'jonathan.crane@cfpb.gov' },
+            { Key: 'Software', Value: 'nginx, mongo, apache, active directory, openvpn' },
+            { Key: 'BusinessOwner', Value: 'Jessica.Russell@cfpb.gov' },
+            { Key: 'SysAdmin', Value: 'SE' },
+            { Key: 'Description', Value: 'Axway Secure Transport Edge, To-be-deleted before xxx date, etc.' }
           ]
 
         ec2.createTags params, (err, res) ->
