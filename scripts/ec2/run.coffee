@@ -38,7 +38,8 @@ module.exports = (robot) ->
       msg.send "You cannot access this feature. Please contact with admin"
       return
 
-    arg_params = getArgParams(msg.match[1])
+    arg_value = msg.match[1]
+    arg_params = getArgParams(arg_value)
 
     dry_run       = arg_params.dry_run
     image_id      = arg_params.image_id
@@ -60,6 +61,47 @@ module.exports = (robot) ->
       params.UserData = new Buffer(init_file).toString('base64')
 
     msg.send "Requesting image_id=#{image_id}, config_path=#{config_path}, userdata_path=#{userdata_path}, dry-run=#{dry_run}..."
+
+    curr_value = 0
+    aws_instance_name = ""
+    aws_instance_desc = ""
+    arg_values = arg_value.split /\s+/
+
+    for av in arg_values
+      if not av.match(/^--/)
+        if (curr_value == 1)
+          aws_instance_name = av
+        else if (curr_value > 1)
+          aws_instance_desc += (av + " ")
+        curr_value += 1
+
+    if (aws_instance_name.length == 0)
+      msg.send "An AWS instance name is required"
+      msg.send "Example usage: ec2 run test_instance this is my description"
+      return
+
+    today = new Date  
+    dd = today.getDate()  
+    mm = today.getMonth() + 1  
+    yyyy = today.getFullYear()  
+    if dd < 10  
+      dd = '0' + dd  
+    if mm < 10  
+      mm = '0' + mm
+
+    tags = [
+      { Key: 'Name', Value: aws_instance_name },
+      { Key: 'Application', Value: 'cf.gov, Qu, Extranet' },
+      { Key: 'Creator', Value: 'jonathan.crane@cfpb.gov' },
+      { Key: 'Software', Value: 'nginx, mongo, apache, active directory, openvpn' },
+      { Key: 'BusinessOwner', Value: 'Jessica.Russell@cfpb.gov' },
+      { Key: 'SysAdmin', Value: 'SE' },
+      { Key: 'Description', Value: aws_instance_desc },
+      { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"}
+    ]
+
+    for t in tags
+      msg.send "Adding new tag: tag_key=#{t['Key']}, tag_value=#{t['Value']}"
 
     if dry_run
       msg.send util.inspect(params, false, null)
@@ -88,18 +130,9 @@ module.exports = (robot) ->
         message = messages.join "\n"
         msg.send message
 
-
         params =
           Resources: [id]
-          Tags: [
-            { Key: 'Name', Value: 'awsdevmtfl01' },
-            { Key: 'Application', Value: 'cf.gov, Qu, Extranet' },
-            { Key: 'Creator', Value: 'jonathan.crane@cfpb.gov' },
-            { Key: 'Software', Value: 'nginx, mongo, apache, active directory, openvpn' },
-            { Key: 'BusinessOwner', Value: 'Jessica.Russell@cfpb.gov' },
-            { Key: 'SysAdmin', Value: 'SE' },
-            { Key: 'Description', Value: 'Axway Secure Transport Edge, To-be-deleted before xxx date, etc.' }
-          ]
+          Tags: tags
 
         ec2.createTags params, (err, res) ->
             if err
