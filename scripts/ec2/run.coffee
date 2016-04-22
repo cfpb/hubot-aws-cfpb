@@ -2,6 +2,7 @@
 #   Run ec2 instance
 #
 # Configurations:
+#   HUBOT_AWS_DEFAULT_CREATOR_EMAIL: [required] An email address to be used for tagging the new instance
 #   HUBOT_AWS_EC2_RUN_CONFIG: [optional] Path to csonfile to be performs service operation based on. Required a config_path argument or this.
 #   HUBOT_AWS_EC2_RUN_USERDATA_PATH: [optional] Path to userdata file.
 #
@@ -80,6 +81,7 @@ module.exports = (robot) ->
       msg.send "Example usage: ec2 run test_instance this is my description"
       return
 
+    # TODO: yank this out into functions
     today = new Date  
     dd = today.getDate()  
     mm = today.getMonth() + 1  
@@ -89,15 +91,28 @@ module.exports = (robot) ->
     if mm < 10  
       mm = '0' + mm
 
+    expireDate = new Date
+    expireDate.setDate(expireDate.getDate() + 14)
+    expdd = expireDate.getDate()
+    expmm = expireDate.getMonth() + 1
+    expyyyy = expireDate.getFullYear()
+    if expdd < 10
+      expdd = '0' + expdd
+    if expmm < 10
+      expmm = '0' + expmm
+
+
     tags = [
       { Key: 'Name', Value: aws_instance_name },
-      { Key: 'Application', Value: 'cf.gov, Qu, Extranet' },
-      { Key: 'Creator', Value: 'jonathan.crane@cfpb.gov' },
-      { Key: 'Software', Value: 'nginx, mongo, apache, active directory, openvpn' },
-      { Key: 'BusinessOwner', Value: 'Jessica.Russell@cfpb.gov' },
-      { Key: 'SysAdmin', Value: 'SE' },
       { Key: 'Description', Value: aws_instance_desc },
-      { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"}
+      { Key: 'Application', Value: '' },
+      { Key: 'Creator', Value: msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL },
+      { Key: 'Software', Value: '' },
+      { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL },
+      { Key: 'SysAdmin', Value: 'SE' },
+      { Key: 'CreatedByApplication', Value: 'chat' },
+      { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"},
+      { Key: 'ExpireDate', Value: "#{expyyyy}-#{expmm}-#{expdd}"}
     ]
 
     for t in tags
@@ -136,8 +151,5 @@ module.exports = (robot) ->
 
         ec2.createTags params, (err, res) ->
             if err
-              msg.send "Error: #{err}"
-            else
-              msg.send "Success to create a tag"
-              msg.send util.inspect(res, false, null)
+              msg.send "Error creating tags: #{err}"
 
