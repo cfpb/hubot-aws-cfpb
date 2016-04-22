@@ -81,7 +81,7 @@ module.exports = (robot) ->
       msg.send "Example usage: ec2 run test_instance this is my description"
       return
 
-    # TODO: yank this out into functions
+    # TODO: yank this out into functions; replace with moment.js goodness
     today = new Date  
     dd = today.getDate()  
     mm = today.getMonth() + 1  
