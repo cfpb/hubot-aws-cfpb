@@ -19,6 +19,7 @@ fs   = require 'fs'
 cson = require 'cson'
 util = require 'util'
 
+
 getArgParams = (arg) ->
   dry_run = if arg.match(/--dry-run/) then true else false
 
@@ -34,10 +35,27 @@ getArgParams = (arg) ->
   return {dry_run: dry_run, image_id: image_id, config_path: config_path, userdata_path: userdata_path}
 
 module.exports = (robot) ->
+
+  robot.respond /my key is (ssh.*)/i, (msg) ->
+    key = msg.match[1]
+
+    msg.message.user.key = key
+    msg.send "OK. Stored ssh public key as #{key}"
+    msg.send "Your user data now looks like: " + util.inspect(msg.message.user, {depth: null})
+
+
+
   robot.respond /ec2 run(.*)$/i, (msg) ->
     unless require('../../auth.coffee').canAccess(robot, msg.envelope.user)
       msg.send "You cannot access this feature. Please contact with admin"
       return
+
+    ssh_key = msg.message.user.key
+    if !ssh_key
+      msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat run `bot my key is [your_ssh_key]`"
+      return
+
+
 
     arg_value = msg.match[1]
     arg_params = getArgParams(arg_value)
@@ -56,11 +74,27 @@ module.exports = (robot) ->
 
     params.ImageId = image_id if image_id
 
+
+    userData = """
+      #!/bin/bash
+      echo 'UserData inside of run.coffee'
+      echo 'Copying user public key into authorized_keys'
+      echo '#{ssh_key}' >> /home/ec2-user/.ssh/authorized_keys
+    """
+    init_file = ""
+
+
     userdata_path ||= process.env.HUBOT_AWS_EC2_RUN_USERDATA_PATH
     if fs.existsSync userdata_path
       init_file = fs.readFileSync userdata_path, 'utf-8'
-      params.UserData = new Buffer(init_file).toString('base64')
+      # params.UserData = new Buffer(init_file).toString('base64')
 
+    userData += "\n" + init_file
+    console.log "UserData is " + userData
+    buf = new Buffer(userData)
+
+
+    params.UserData = buf.toString('base64')
     msg.send "Requesting image_id=#{image_id}, config_path=#{config_path}, userdata_path=#{userdata_path}, dry-run=#{dry_run}..."
 
     curr_value = 0
