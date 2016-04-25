@@ -8,6 +8,7 @@
 #
 # Commands:
 #   hubot ec2 run - Run an Instance
+#   hubot my key is <public_ssh_key> - Stores the user's public SSH key for use when launching an instance
 #
 # Notes:
 #   --image_id=***      : [optional] The ID of the AMI. If omit it, the ImageId of config is used
