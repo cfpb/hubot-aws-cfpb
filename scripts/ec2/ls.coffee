@@ -31,61 +31,74 @@ getArgParams = (arg) ->
     ins_filter: ins_filter
   }
 
+listEC2Instances = (ec2, msg, filter = "all", opt_arg = "") ->
+  arg_params = getArgParams(msg.match[1])
+  ins_id  = arg_params.ins_id
+  ins_filter = arg_params.ins_filter
+
+  params = {}
+
+  if ins_id
+    params['InstanceIds'] = [ins_id]
+
+  if filter == "mine"
+    params['Filters'] = [{ Name: 'tag:Creator', Values: [opt_arg] }]
+  else if filter == "chat"
+    params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: [filter] }]
+
+  ec2.describeInstances (params), (err, res) ->
+    if err
+      msg.send "DescribeInstancesError: #{err}"
+    else
+      if ins_id
+        msg.send util.inspect(res, false, null)
+
+        ec2.describeInstanceAttribute { InstanceId: ins_id, Attribute: 'userData' }, (err, res) ->
+          if err
+            msg.send "DescribeInstanceAttributeError: #{err}"
+          else if res.UserData.Value
+            msg.send new Buffer(res.UserData.Value, 'base64').toString('ascii')
+      else
+        messages = []
+        for data in res.Reservations
+          ins = data.Instances[0]
+
+          name = '[NoName]'
+          for tag in ins.Tags when tag.Key is 'Name'
+            name = tag.Value
+
+          messages.push({
+            time   : moment(ins.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
+            state  : ins.State.Name
+            id     : ins.InstanceId
+            image  : ins.ImageId
+            az     : ins.Placement.AvailabilityZone
+            subnet : ins.SubnetId
+            type   : ins.InstanceType
+            ip     : ins.PrivateIpAddress
+            name   : name || '[NoName]'
+          })
+
+        messages.sort (a, b) ->
+          moment(a.time) - moment(b.time)
+        message = tsv.stringify(messages) || '[None]'
+        msg.send message
+
+
 module.exports = (robot) ->
 
   robot.respond /ec2 ls(.*)$/i, (msg) ->
     arg_params = getArgParams(msg.match[1])
     ins_id  = arg_params.ins_id
     ins_filter = arg_params.ins_filter
-
     msg_txt = "Fetching #{ins_id || 'all (instance_id is not provided)'}"
-    msg_txt += " containing '#{ins_filter}' in name" if ins_filter
+    msg_txt += " containing '#{ins_filter}' in name" if ins_filter 
     msg_txt += "..."
     msg.send msg_txt
 
     aws = require('../../aws.coffee').aws()
     ec2 = new aws.EC2({apiVersion: '2014-10-01'})
-
-    ec2.describeInstances (if ins_id then { InstanceIds: [ins_id] } else null), (err, res) ->
-      if err
-        msg.send "DescribeInstancesError: #{err}"
-      else
-        if ins_id
-          msg.send util.inspect(res, false, null)
-
-          ec2.describeInstanceAttribute { InstanceId: ins_id, Attribute: 'userData' }, (err, res) ->
-            if err
-              msg.send "DescribeInstanceAttributeError: #{err}"
-            else if res.UserData.Value
-              msg.send new Buffer(res.UserData.Value, 'base64').toString('ascii')
-        else
-          messages = []
-          for data in res.Reservations
-            ins = data.Instances[0]
-
-            name = '[NoName]'
-            for tag in ins.Tags when tag.Key is 'Name'
-              name = tag.Value
-
-            continue if ins_filter and name.indexOf(ins_filter) is -1
-
-            # TODO: refactor this and sorting into a reusable function
-            messages.push({
-              time   : moment(ins.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
-              state  : ins.State.Name
-              id     : ins.InstanceId
-              image  : ins.ImageId
-              az     : ins.Placement.AvailabilityZone
-              subnet : ins.SubnetId
-              type   : ins.InstanceType
-              ip     : ins.PrivateIpAddress
-              name   : name || '[NoName]'
-            })
-
-          messages.sort (a, b) ->
-            moment(a.time) - moment(b.time)
-          message = tsv.stringify(messages) || '[None]'
-          msg.send message
+    listEC2Instances(ec2, msg)
 
 
   robot.respond /ec2 mine$/i, (msg) ->
@@ -97,45 +110,9 @@ module.exports = (robot) ->
 
     aws = require('../../aws.coffee').aws()
     ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    listEC2Instances(ec2, msg, "mine", creator_email)
 
-    # TODO: filter directly on the API by tag rather than this list-all-then-filter approach
-    ec2.describeInstances (err, res) ->
-      if err
-        msg.send "DescribeInstancesError: #{err}"
-      else
-        messages = []
-        for data in res.Reservations
-          ins = data.Instances[0]
-
-          # TODO: refactor all this tag fetching stuff into either direct API calls or a reusable function
-          creator = '[No Creator]'
-          for tag in ins.Tags when tag.Key is 'Creator'
-            creator = tag.Value
-
-          continue if creator.indexOf(creator_email) is -1
-
-          name = '[NoName]'
-          for tag in ins.Tags when tag.Key is 'Name'
-            name   = tag.Value
-
-
-          messages.push({
-            time   : moment(ins.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
-            state  : ins.State.Name
-            id     : ins.InstanceId
-            image  : ins.ImageId
-            az     : ins.Placement.AvailabilityZone
-            subnet : ins.SubnetId
-            type   : ins.InstanceType
-            ip     : ins.PrivateIpAddress
-            name   : name
-          })
-
-        messages.sort (a, b) ->
-          moment(a.time) - moment(b.time)
-        message = tsv.stringify(messages) || '[None]'
-        msg.send message
-
+    
   # TODO: I'm not a fan of this listener... what would be more intuitive? ec2 ls chat? maybe make all of these forms of 'ec2 ls... ? '
   robot.respond /ec2 chat$/i, (msg) ->
 
@@ -144,40 +121,16 @@ module.exports = (robot) ->
 
     aws = require('../../aws.coffee').aws()
     ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    listEC2Instances(ec2, msg, "chat")
 
-    # TODO: filter directly on the API by tag rather than this list-all-then-filter approach
-    ec2.describeInstances (err, res) ->
-      if err
-        msg.send "DescribeInstancesError: #{err}"
-      else
-        messages = []
-        for data in res.Reservations
-          ins = data.Instances[0]
 
-          # TODO: refactor all this CHAT tag fetching stuff into either direct API calls or a reusable function
-          created_by = '[No CreatedByApplication]'
-          for tag in ins.Tags when tag.Key is 'CreatedByApplication'
-            created_by = tag.Value
+handle_ec2_instance = (robot) ->
+  robot.messageRoom process.env.EC2_ROOM, "Test message"
 
-          continue if created_by.indexOf("chat") is -1
+ec2_setup_polling = (robot) ->
+  setInterval ->
+    handle_ec2_instance(robot)?
+  , 1000 * 60 * 1
 
-          name = '[NoName]'
-          for tag in ins.Tags when tag.Key is 'Name'
-            name   = tag.Value
-
-          messages.push({
-            time   : moment(ins.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
-            state  : ins.State.Name
-            id     : ins.InstanceId
-            image  : ins.ImageId
-            az     : ins.Placement.AvailabilityZone
-            subnet : ins.SubnetId
-            type   : ins.InstanceType
-            ip     : ins.PrivateIpAddress
-            name   : name
-          })
-
-        messages.sort (a, b) ->
-          moment(a.time) - moment(b.time)
-        message = tsv.stringify(messages) || '[None]'
-        msg.send message
+  if twitter_query(robot)?
+    twitter_search(robot)

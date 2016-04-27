@@ -1,8 +1,8 @@
 # Description:
-#   Terminate ec2 instance
+#   Stop ec2 instance
 #
 # Commands:
-#   hubot ec2 terminate --instance_id=[instance_id] - Terminate the Instance
+#   hubot ec2 stop --instance_id=[instance_id] - Stop the Instance
 #
 # Notes:
 #   --instance_id=***   : [required] One instance ID.
@@ -17,7 +17,7 @@ getArgParams = (arg) ->
   return {dry_run: dry_run, ins_id: ins_id}
 
 module.exports = (robot) ->
-  robot.respond /ec2 terminate(.*)$/i, (msg) ->
+  robot.respond /ec2 stop(.*)$/i, (msg) ->
     unless require('../../auth.coffee').canAccess(robot, msg.envelope.user)
       msg.send "You cannot access this feature. Please contact with admin"
       return
@@ -26,17 +26,17 @@ module.exports = (robot) ->
     ins_id  = arg_params.ins_id
     dry_run = arg_params.dry_run
 
-    msg.send "Terminating instance_id=#{ins_id}, dry-run=#{dry_run}..."
+    msg.send "Stopping instance_id=#{ins_id}, dry-run=#{dry_run}..."
 
     aws = require('../../aws.coffee').aws()
     ec2 = new aws.EC2({apiVersion: '2014-10-01'})
 
-    ec2.terminateInstances { DryRun: dry_run, InstanceIds: [ins_id] }, (err, res) ->
+    ec2.stopInstances { DryRun: dry_run, InstanceIds: [ins_id] }, (err, res) ->
       if err
         msg.send "Error: #{err}"
       else
         messages = []
-        for ins in res.TerminatingInstances
+        for ins in res.StoppingInstances
           id     = ins.InstanceId
           state  = ins.CurrentState.Name
 
