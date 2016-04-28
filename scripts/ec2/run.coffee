@@ -80,7 +80,7 @@ module.exports = (robot) ->
 
     # If a key is required and we didn't find one, abort
     if !!process.env.HUBOT_AWS_EC2_REQUIRE_SSH_KEY and !ssh_key.length
-      return msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat run `#{robot.name} my key is [your_ssh_key]`"
+      return msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat say `#{robot.name} my public key is [your_ssh_key]`"
 
     userData = """
       #!/bin/bash
