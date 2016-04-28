@@ -103,7 +103,7 @@ module.exports = (robot) ->
 
   robot.respond /ec2 mine$/i, (msg) ->
 
-    creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL
+    creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
 
     msg_txt = "Fetching instances created by #{creator_email} ..."
     msg.send msg_txt

@@ -31,17 +31,30 @@ module.exports = (robot) ->
     aws = require('../../aws.coffee').aws()
     ec2 = new aws.EC2({apiVersion: '2014-10-01'})
 
-    ec2.stopInstances { DryRun: dry_run, InstanceIds: [ins_id] }, (err, res) ->
-      if err
-        msg.send "Error: #{err}"
-      else
-        messages = []
-        for ins in res.StoppingInstances
-          id     = ins.InstanceId
-          state  = ins.CurrentState.Name
+    creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
 
-          messages.push("#{id}\t#{state}")
+    params = {
+      InstanceIds: [ins_id],
+      Filters: [{ Name: 'tag:Creator', Values: [creator_email] }]
+    }
 
-        messages.sort()
-        message = messages.join "\n"
-        msg.send message
+    ec2.describeInstances (params), (err, res) ->
+      
+      unless res.Reservations.length
+        msg.send "Permission denied to stop this instance. Only the creator can stop this instance. "
+        return 
+
+      ec2.stopInstances { DryRun: dry_run, InstanceIds: [ins_id] }, (err, res) ->
+        if err
+          msg.send "Error: #{err}"
+        else
+          messages = []
+          for ins in res.StoppingInstances
+            id     = ins.InstanceId
+            state  = ins.CurrentState.Name
+
+            messages.push("#{id}\t#{state}")
+
+          messages.sort()
+          message = messages.join "\n"
+          msg.send message
