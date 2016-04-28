@@ -5,15 +5,16 @@
 #   HUBOT_AWS_DEFAULT_CREATOR_EMAIL: [required] An email address to be used for tagging the new instance
 #   HUBOT_AWS_EC2_RUN_CONFIG: [optional] Path to csonfile to be performs service operation based on. Required a config_path argument or this.
 #   HUBOT_AWS_EC2_RUN_USERDATA_PATH: [optional] Path to userdata file.
+#   HUBOT_AWS_EC2_REQUIRE_SSH_KEY: [optional] Require that a user have a public SSH key saved to their chat account. See https://github.com/catops/catops-keys
 #
 # Commands:
 #   hubot ec2 run - Run an Instance
-#   hubot my key is <public_ssh_key> - Stores the user's public SSH key for use when launching an instance
 #
 # Notes:
 #   --image_id=***      : [optional] The ID of the AMI. If omit it, the ImageId of config is used
 #   --config_path=***   : [optional] Config file path. If omit it, HUBOT_AWS_EC2_RUN_CONFIG is referred to.
 #   --userdata_path=*** : [optional] Userdata file path to be not encoded yet. If omit it, HUBOT_AWS_EC2_RUN_USERDATA_PATH is referred to.
+#   --team=***          : [optional] Name of team the instance belongs to. The public keys of everyone on the team will be added to the instance.
 #   --dry-run           : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
 
 fs   = require 'fs'
@@ -33,30 +34,18 @@ getArgParams = (arg) ->
   userdata_path_capture = /--userdata_path=(.*?)( |$)/.exec(arg)
   userdata_path = if userdata_path_capture then userdata_path_capture[1] else null
 
-  return {dry_run: dry_run, image_id: image_id, config_path: config_path, userdata_path: userdata_path}
+  team_capture = /--team=(.*?)( |$)/.exec(arg)
+  team = if team_capture then team_capture[1] else null
+
+  return {dry_run: dry_run, image_id: image_id, config_path: config_path, userdata_path: userdata_path, team: team}
 
 module.exports = (robot) ->
 
-  robot.respond /my key is (ssh.*)/i, (msg) ->
-    key = msg.match[1]
-
-    msg.message.user.key = key
-    msg.send "OK. Stored ssh public key as #{key}"
-    msg.send "Your user data now looks like: " + util.inspect(msg.message.user, {depth: null})
-
-
-
   robot.respond /ec2 run(.*)$/i, (msg) ->
+
     unless require('../../auth.coffee').canAccess(robot, msg.envelope.user)
       msg.send "You cannot access this feature. Please contact with admin"
       return
-
-    ssh_key = msg.message.user.key
-    if !ssh_key
-      msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat run `bot my key is [your_ssh_key]`"
-      return
-
-
 
     arg_value = msg.match[1]
     arg_params = getArgParams(arg_value)
@@ -65,6 +54,7 @@ module.exports = (robot) ->
     image_id      = arg_params.image_id
     config_path   = arg_params.config_path
     userdata_path = arg_params.userdata_path
+    team          = arg_params.team
 
     config_path ||= process.env.HUBOT_AWS_EC2_RUN_CONFIG
     unless fs.existsSync config_path
@@ -75,6 +65,22 @@ module.exports = (robot) ->
 
     params.ImageId = image_id if image_id
 
+    ssh_key = ''
+
+    # Check if a team was specified and if teams exist in the brain
+    if team and robot.brain.data.teams and robot.brain.data.teams[team]
+      robot.brain.data.teams[team].members.forEach (member) ->
+        member = robot.brain.userForName(member)
+        if member and member.key
+          ssh_key += member.key + '\n'
+        return
+    # If we're not using teams, check for the user's key
+    else if robot.brain.userForId(msg.envelope.user.id).key
+      ssh_key = robot.brain.userForId(msg.envelope.user.id).key
+
+    # If a key is required and we didn't find one, abort
+    if !!process.env.HUBOT_AWS_EC2_REQUIRE_SSH_KEY and !ssh_key.length
+      return msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat run `#{robot.name} my key is [your_ssh_key]`"
 
     userData = """
       #!/bin/bash
@@ -83,7 +89,6 @@ module.exports = (robot) ->
       echo '#{ssh_key}' >> /home/ec2-user/.ssh/authorized_keys
     """
     init_file = ""
-
 
     userdata_path ||= process.env.HUBOT_AWS_EC2_RUN_USERDATA_PATH
     if fs.existsSync userdata_path
