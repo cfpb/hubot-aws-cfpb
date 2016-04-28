@@ -18,119 +18,142 @@ moment = require 'moment'
 util   = require 'util'
 tsv    = require 'tsv'
 
-getArgParams = (arg) ->
-  ins_id_capture = /--instance_id=(.*?)( |$)/.exec(arg)
-  ins_id = if ins_id_capture then ins_id_capture[1] else ''
-
-  # filter by instance name
-  ins_filter_capture = /--instance_filter=(.*?)( |$)/.exec(arg)
-  ins_filter = if ins_filter_capture then ins_filter_capture[1] else ''
-
-  return {
-    ins_id: ins_id,
-    ins_filter: ins_filter
-  }
-
-listEC2Instances = (ec2, msg, filter = "all", opt_arg = "") ->
-  arg_params = getArgParams(msg.match[1])
-  ins_id  = arg_params.ins_id
-  ins_filter = arg_params.ins_filter
+getArgParams = (arg, filter="all", opt_arg="") ->
+  instances = []
+  if arg
+    for av in arg.split /\s+/
+      if av and not av.match(/^--/)
+        instances.push(av)
 
   params = {}
-
-  if ins_id
-    params['InstanceIds'] = [ins_id]
 
   if filter == "mine"
     params['Filters'] = [{ Name: 'tag:Creator', Values: [opt_arg] }]
   else if filter == "chat"
     params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: [filter] }]
+  else if instances.length
+    params['InstanceIds'] = instances
 
-  ec2.describeInstances (params), (err, res) ->
+  if Object.keys(params).length > 0
+    return params 
+  else 
+    return null
+
+listEC2Instances = (ec2, params, complete, error) ->
+  ec2.describeInstances params, (err, res) ->
     if err
-      msg.send "DescribeInstancesError: #{err}"
+      error(err)
     else
-      if ins_id
-        msg.send util.inspect(res, false, null)
+      instances = []
+      for reservation in res.Reservations
+        for instance in reservation.Instances
+          instances.push(instance)
 
-        ec2.describeInstanceAttribute { InstanceId: ins_id, Attribute: 'userData' }, (err, res) ->
-          if err
-            msg.send "DescribeInstanceAttributeError: #{err}"
-          else if res.UserData.Value
-            msg.send new Buffer(res.UserData.Value, 'base64').toString('ascii')
-      else
-        messages = []
-        for data in res.Reservations
-          ins = data.Instances[0]
+      complete(instances)
 
-          name = '[NoName]'
-          for tag in ins.Tags when tag.Key is 'Name'
-            name = tag.Value
+get_expiration_tag = (tags) ->
+  expiration_tags = tags.filter (tag) -> tag.Key = "ExpireDate"
 
-          messages.push({
-            time   : moment(ins.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
-            state  : ins.State.Name
-            id     : ins.InstanceId
-            image  : ins.ImageId
-            az     : ins.Placement.AvailabilityZone
-            subnet : ins.SubnetId
-            type   : ins.InstanceType
-            ip     : ins.PrivateIpAddress
-            name   : name || '[NoName]'
-          })
+  unless expiration_tags.length
+    return moment() 
+  return moment(expiration_tags[0].Value).format('YYYY-MM-DD')
 
-        messages.sort (a, b) ->
-          moment(a.time) - moment(b.time)
-        message = tsv.stringify(messages) || '[None]'
-        msg.send message
+instance_will_expire_soon = (instance) -> 
+  expiration_tag = instance.Tags.filter get_expiration_tag
+  DAYS_CONSIDERED_SOON = 2
+  will_be_expired_in_x_days = expiration_tag < moment().add(DAYS_CONSIDERED_SOON, 'days') 
+  is_not_expired_now = expiration_tag > moment()
+  return will_be_expired_in_x_days and not is_not_expired_now
 
+instance_has_expired = (instance) -> 
+  expiration_tag = instance.Tags.filter get_expiration_tag
+  is_not_expired_now = expiration_tag > moment()
+  return is_not_expired_now
+
+handle_instances_that_will_expire_soon = (instances) ->
+  true
+
+handle_instances_that_have_expired = (instances) ->
+  true
+
+handle_all_instances = (instances) ->
+  true
+
+handle_instances = (instances) ->
+  instances_that_will_expire = instances.filter instance_will_expire_soon
+  instances_that_have_expired = instances.filter instance_has_expired
+
+  handle_instances_that_will_expire_soon(instances_that_will_expire)
+  handle_instances_that_have_expired(instances_that_have_expired)
+  handle_all_instances(instances)
+
+handle_ec2_instance = (robot, ec2) ->
+  robot.messageRoom "l33t room", "before list instances"
+  # listEC2Instances(ec2, {}, handle_instances, ->)  
+
+ec2_setup_polling = (robot, ec2) ->
+  setInterval ->
+    handle_ec2_instance(robot, ec2)?
+  , 1000 * 60 * 1
+
+messages_from_ec2_instances = (instances) ->
+  messages = []
+  for instance in instances
+    name = '[NoName]'
+    for tag in instance.Tags when tag.Key is 'Name'
+      name = tag.Value
+
+    messages.push({
+      time   : moment(instance.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
+      state  : instance.State.Name
+      id     : instance.InstanceId
+      image  : instance.ImageId
+      az     : instance.Placement.AvailabilityZone
+      subnet : instance.SubnetId
+      type   : instance.InstanceType
+      ip     : instance.PrivateIpAddress
+      name   : name || '[NoName]'
+    })
+
+  messages.sort (a, b) ->
+      moment(a.time) - moment(b.time)
+  return tsv.stringify(messages) || '[None]'
+
+error_ec2_instances = (msg, err) ->
+  return (err) -> 
+    msg.send "DescribeInstancesError: #{err}"
+
+complete_ec2_instances = (msg, instances) ->
+  return (instances) -> 
+    msg.send messages_from_ec2_instances(instances)
 
 module.exports = (robot) ->
+  aws = require('../../aws.coffee').aws()
+  ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+
+  ec2_setup_polling(robot, ec2)
 
   robot.respond /ec2 ls(.*)$/i, (msg) ->
     arg_params = getArgParams(msg.match[1])
-    ins_id  = arg_params.ins_id
-    ins_filter = arg_params.ins_filter
-    msg_txt = "Fetching #{ins_id || 'all (instance_id is not provided)'}"
-    msg_txt += " containing '#{ins_filter}' in name" if ins_filter 
-    msg_txt += "..."
+    msg_txt = "Fetching instances..."
     msg.send msg_txt
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
-    listEC2Instances(ec2, msg)
+    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
 
   robot.respond /ec2 mine$/i, (msg) ->
-
     creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
-
     msg_txt = "Fetching instances created by #{creator_email} ..."
     msg.send msg_txt
+    arg_params = getArgParams(msg.match[1], "mine", creator_email)
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
-    listEC2Instances(ec2, msg, "mine", creator_email)
+    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
-    
-  # TODO: I'm not a fan of this listener... what would be more intuitive? ec2 ls chat? maybe make all of these forms of 'ec2 ls... ? '
+
   robot.respond /ec2 chat$/i, (msg) ->
-
     msg_txt = "Fetching instances created via chat ..."
     msg.send msg_txt
+    arg_params = getArgParams(msg.match[1], "chat")
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
-    listEC2Instances(ec2, msg, "chat")
+    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
-
-handle_ec2_instance = (robot) ->
-  robot.messageRoom process.env.EC2_ROOM, "Test message"
-
-ec2_setup_polling = (robot) ->
-  setInterval ->
-    handle_ec2_instance(robot)?
-  , 1000 * 60 * 1
-
-  if twitter_query(robot)?
-    twitter_search(robot)
