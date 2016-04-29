@@ -16,6 +16,9 @@ moment = require 'moment'
 util   = require 'util'
 tsv    = require 'tsv'
 
+aws = require('../../aws.coffee').aws()
+ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+
 getArgParams = (arg, filter="all", opt_arg="") ->
   instances = []
   if arg
@@ -39,7 +42,7 @@ getArgParams = (arg, filter="all", opt_arg="") ->
   else 
     return null
 
-listEC2Instances = (ec2, params, complete, error) ->
+listEC2Instances = (params, complete, error) ->
   ec2.describeInstances params, (err, res) ->
     if err
       error(err)
@@ -84,13 +87,13 @@ handle_instances = (robot) ->
     robot.messageRoom process.env.HUBOT_EC2_MENTION_ROOM, "Instances that have expired...\n" + 
       messages_from_ec2_instances(instances_that_have_expired)
 
-handle_ec2_instance = (robot, ec2) ->
+handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
-    listEC2Instances(ec2, {}, handle_instances(robot), ->)  
+    listEC2Instances({}, handle_instances(robot), ->)  
     
-ec2_setup_polling = (robot, ec2) ->
+ec2_setup_polling = (robot) ->
   setInterval ->
-    handle_ec2_instance(robot, ec2)?
+    handle_ec2_instance(robot)?
   , 1000 * 60 * 60 * 8
 
 messages_from_ec2_instances = (instances) ->
@@ -127,34 +130,32 @@ complete_ec2_instances = (msg, instances) ->
     msg.send messages_from_ec2_instances(instances)
 
 module.exports = (robot) ->
-  aws = require('../../aws.coffee').aws()
-  ec2 = new aws.EC2({apiVersion: '2014-10-01'})
-
-  ec2_setup_polling(robot, ec2)
+  
+  ec2_setup_polling(robot)
 
   robot.respond /ec2 ls(.*)$/i, (msg) ->
-    arg_params = getArgParams(msg.match[1])
+    arg_params = getArgParams(arg=msg.match[1])
     msg.send "Fetching instances..."
 
-    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
   robot.respond /ec2 filter(.*)$/i, (msg) ->
-    arg_params = getArgParams(msg.match[1], "filter")
+    arg_params = getArgParams(arg=msg.match[1], filter="filter")
     msg.send "Fetching filtered instances..."
 
-    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
   robot.respond /ec2 mine$/i, (msg) ->
     creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
     msg.send "Fetching instances created by #{creator_email} ..."
-    arg_params = getArgParams(msg.match[1], "mine", creator_email)
+    arg_params = getArgParams(arg=msg.match[1], filter="mine", opt_arg=creator_email)
 
-    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
 
   robot.respond /ec2 chat$/i, (msg) ->
     msg.send "Fetching instances created via chat ..."
-    arg_params = getArgParams(msg.match[1], "chat")
+    arg_params = getArgParams(arg=msg.match[1], filter="chat")
 
-    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
