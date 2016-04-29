@@ -142,14 +142,15 @@ module.exports = (robot) ->
       expmm = '0' + expmm
 
 
+    user_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
     tags = [
       { Key: 'Name', Value: aws_instance_name },
       { Key: 'Description', Value: aws_instance_desc },
       { Key: 'Application', Value: '' },
-      { Key: 'Creator', Value: msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL },
+      { Key: 'Creator', Value:  user_email},
       { Key: 'Software', Value: '' },
-      { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL },
-      { Key: 'SysAdmin', Value: 'SE' },
+      { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown" },
+      { Key: 'SysAdmin', Value: user_email },
       { Key: 'CreatedByApplication', Value: 'chat' },
       { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"},
       { Key: 'ExpireDate', Value: "#{expyyyy}-#{expmm}-#{expdd}"}
