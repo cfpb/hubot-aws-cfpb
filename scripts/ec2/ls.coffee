@@ -9,10 +9,8 @@
 #   hubot ec2 ls - Displays Instances
 #   hubot ec2 mine - Displays Instances I've created, based on user email
 #   hubot ec2 chat - Displays Instances created via chat
+#   hubot ec2 filter sometext - Filters instances starting with 'sometext'
 
-# Notes:
-#   --instance_id=***     : [optional] The id of an instance. If omit it, returns info about all instances.
-#   --instance_filter=*** : [optional] The name to be used for filtering return values by an instance name.
 
 moment = require 'moment'
 util   = require 'util'
@@ -31,6 +29,8 @@ getArgParams = (arg, filter="all", opt_arg="") ->
     params['Filters'] = [{ Name: 'tag:Creator', Values: [opt_arg] }]
   else if filter == "chat"
     params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: [filter] }]
+  else if filter == "filter" and instances.length
+    params['Filters'] = [{ Name: 'tag:Name', Values: ["#{instances[0]}*"] }]  
   else if instances.length
     params['InstanceIds'] = instances
 
@@ -51,15 +51,15 @@ listEC2Instances = (ec2, params, complete, error) ->
 
       complete(instances)
 
-get_expiration_tag = (tags) ->
-  expiration_tags = tags.filter (tag) -> tag.Key = "ExpireDate"
-
-  unless expiration_tags.length
-    return moment() 
-  return moment(expiration_tags[0].Value).format('YYYY-MM-DD')
+get_expiration_tag = (tag) ->
+  return tag.Key == "ExpireDate"
 
 instance_will_expire_soon = (instance) -> 
   expiration_tag = instance.Tags.filter get_expiration_tag
+  if expiration_tag.length == 0
+    return false
+
+  expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
   DAYS_CONSIDERED_SOON = 2
   will_be_expired_in_x_days = expiration_tag < moment().add(DAYS_CONSIDERED_SOON, 'days') 
   is_not_expired_now = expiration_tag > moment()
@@ -67,34 +67,31 @@ instance_will_expire_soon = (instance) ->
 
 instance_has_expired = (instance) -> 
   expiration_tag = instance.Tags.filter get_expiration_tag
+  if expiration_tag.length == 0
+    return false
+
   is_not_expired_now = expiration_tag > moment()
   return is_not_expired_now
 
-handle_instances_that_will_expire_soon = (instances) ->
-  true
+handle_instances = (robot) ->
+  return (instances) ->
+    instances_that_will_expire = instances.filter instance_will_expire_soon
+    instances_that_have_expired = instances.filter instance_has_expired
 
-handle_instances_that_have_expired = (instances) ->
-  true
+    robot.messageRoom process.env.HUBOT_EC2_MENTION_ROOM, "Instances that will expire soon...\n" + 
+      messages_from_ec2_instances(instances_that_will_expire)
 
-handle_all_instances = (instances) ->
-  true
-
-handle_instances = (instances) ->
-  instances_that_will_expire = instances.filter instance_will_expire_soon
-  instances_that_have_expired = instances.filter instance_has_expired
-
-  handle_instances_that_will_expire_soon(instances_that_will_expire)
-  handle_instances_that_have_expired(instances_that_have_expired)
-  handle_all_instances(instances)
+    robot.messageRoom process.env.HUBOT_EC2_MENTION_ROOM, "Instances that have expired...\n" + 
+      messages_from_ec2_instances(instances_that_have_expired)
 
 handle_ec2_instance = (robot, ec2) ->
-  robot.messageRoom "l33t room", "before list instances"
-  # listEC2Instances(ec2, {}, handle_instances, ->)  
-
+  if process.env.HUBOT_EC2_MENTION_ROOM
+    listEC2Instances(ec2, {}, handle_instances(robot), ->)  
+    
 ec2_setup_polling = (robot, ec2) ->
   setInterval ->
     handle_ec2_instance(robot, ec2)?
-  , 1000 * 60 * 1
+  , 1000 * 60 * 60 * 8
 
 messages_from_ec2_instances = (instances) ->
   messages = []
@@ -116,8 +113,10 @@ messages_from_ec2_instances = (instances) ->
     })
 
   messages.sort (a, b) ->
-      moment(a.time) - moment(b.time)
+    moment(a.time) - moment(b.time)
+
   return tsv.stringify(messages) || '[None]'
+
 
 error_ec2_instances = (msg, err) ->
   return (err) -> 
@@ -135,24 +134,26 @@ module.exports = (robot) ->
 
   robot.respond /ec2 ls(.*)$/i, (msg) ->
     arg_params = getArgParams(msg.match[1])
-    msg_txt = "Fetching instances..."
-    msg.send msg_txt
+    msg.send "Fetching instances..."
 
     listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
+  robot.respond /ec2 filter(.*)$/i, (msg) ->
+    arg_params = getArgParams(msg.match[1], "filter")
+    msg.send "Fetching filtered instances..."
+
+    listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
   robot.respond /ec2 mine$/i, (msg) ->
     creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
-    msg_txt = "Fetching instances created by #{creator_email} ..."
-    msg.send msg_txt
+    msg.send "Fetching instances created by #{creator_email} ..."
     arg_params = getArgParams(msg.match[1], "mine", creator_email)
 
     listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
 
   robot.respond /ec2 chat$/i, (msg) ->
-    msg_txt = "Fetching instances created via chat ..."
-    msg.send msg_txt
+    msg.send "Fetching instances created via chat ..."
     arg_params = getArgParams(msg.match[1], "chat")
 
     listEC2Instances(ec2, arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
