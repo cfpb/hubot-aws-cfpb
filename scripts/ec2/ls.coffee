@@ -86,6 +86,14 @@ handle_instances = (robot) ->
     robot.messageRoom process.env.HUBOT_EC2_MENTION_ROOM, "Instances that have expired...\n" + 
       messages_from_ec2_instances(instances_that_have_expired)
 
+    instance_ids_to_stop = []
+    for instance in instances_that_have_expired
+      instance_ids_to_stop.push(instance.InstanceId)
+
+    ec2.stopInstances { InstanceIds: instance_ids_to_stop }, (err, res) ->
+      if err
+        robot.messageRoom process.env.HUBOT_EC2_MENTION_ROOM, err
+
 handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
     listEC2Instances({}, handle_instances(robot), ->)  
