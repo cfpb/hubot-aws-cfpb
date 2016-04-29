@@ -16,8 +16,7 @@ moment = require 'moment'
 util   = require 'util'
 tsv    = require 'tsv'
 
-aws = require('../../aws.coffee').aws()
-ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+ec2 = require('../../ec2.coffee')
 
 getArgParams = (arg, filter="all", opt_arg="") ->
   instances = []

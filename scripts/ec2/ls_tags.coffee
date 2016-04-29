@@ -36,8 +36,7 @@ module.exports = (robot) ->
   robot.respond /ec2 tag ls(.*)$/i, (msg) ->
     msg.send "Fetching ..."
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    ec2 = require('../../ec2.coffee')
 
     arg_params   = getArgParams(msg.match[1])
 
