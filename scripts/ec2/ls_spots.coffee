@@ -13,8 +13,7 @@ module.exports = (robot) ->
   robot.respond /ec2 spot ls$/i, (msg) ->
     msg.send "Fetching ..."
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    ec2 = require('../../ec2.coffee')
 
     ec2.describeSpotInstanceRequests null, (err, res) ->
       if err

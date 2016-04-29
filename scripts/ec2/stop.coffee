@@ -28,8 +28,7 @@ module.exports = (robot) ->
 
     msg.send "Stopping instance_id=#{ins_id}, dry-run=#{dry_run}..."
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    ec2 = require('../../ec2.coffee')
 
     creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
 

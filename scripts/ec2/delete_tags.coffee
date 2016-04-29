@@ -54,8 +54,7 @@ module.exports = (robot) ->
       msg.send util.inspect(params, false, null)
       return
 
-    aws = require('../../aws.coffee').aws()
-    ec2 = new aws.EC2({apiVersion: '2014-10-01'})
+    ec2 = require('../../ec2.coffee')
 
     ec2.deleteTags params, (err, res) ->
       if err
