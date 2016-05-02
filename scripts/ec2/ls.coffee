@@ -96,7 +96,9 @@ handle_instances = (robot) ->
 
 handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
-    listEC2Instances({}, handle_instances(robot), ->)  
+    params = {}
+    params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: ['chat'] }]
+    listEC2Instances(params, handle_instances(robot), ->)  
     
 ec2_setup_polling = (robot) ->
   setInterval ->
