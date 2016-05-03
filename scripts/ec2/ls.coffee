@@ -12,7 +12,7 @@
 #   hubot ec2 chat - Displays Instances created via chat
 #   hubot ec2 filter sometext - Filters instances starting with 'sometext'
 
-
+gist = require 'quick-gist'
 moment = require 'moment'
 tsv    = require 'tsv'
 
@@ -135,8 +135,15 @@ error_ec2_instances = (msg, err) ->
     msg.send "DescribeInstancesError: #{err}"
 
 complete_ec2_instances = (msg, instances) ->
-  return (instances) -> 
-    msg.send messages_from_ec2_instances(instances)
+  return (instances) ->
+
+    msgs = messages_from_ec2_instances(instances)
+    if msgs.length < 1000
+      msg.send msgs
+    else
+      gist {content: msgs, enterpriseOnly: true}, (err, resp, data) ->
+        url = data.html_url
+        msg.send "View instances at: " + url
 
 module.exports = (robot) ->
   
