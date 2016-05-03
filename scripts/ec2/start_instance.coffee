@@ -50,5 +50,5 @@ module.exports = (robot) ->
       if err
         msg.send "Error: #{err}"
       else
-       msg.send "Success! The instances are running"
+       msg.send "Success! The instances are starting"
        msg.send util.inspect(res, false, null)

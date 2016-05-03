@@ -7,13 +7,13 @@
 #
 # Commands:
 #   hubot ec2 ls - Displays Instances
+#   hubot ec2 ls instance_id - Displays details about 'instance_id'
 #   hubot ec2 mine - Displays Instances I've created, based on user email
 #   hubot ec2 chat - Displays Instances created via chat
 #   hubot ec2 filter sometext - Filters instances starting with 'sometext'
 
 
 moment = require 'moment'
-util   = require 'util'
 tsv    = require 'tsv'
 
 ec2 = require('../../ec2.coffee')
