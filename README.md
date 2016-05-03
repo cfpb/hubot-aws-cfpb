@@ -16,11 +16,11 @@ These changes are quite specific to our usage and highly unlikely to be reusable
 
 More generic, reusable contributions should be made to https://github.com/yoheimuta/hubot-aws, not here.
 
-Contributions specific to our usage can be made here. See [[CONTRIBUTING.md]]
+Contributions specific to our usage can be made here. See [CONTRIBUTING](CONTRIBUTING.md)
 
 ## Configuration
 
-See [[INSTALL]]
+See [INSTALL](INSTALL.md)
 
 ## Commands
 
