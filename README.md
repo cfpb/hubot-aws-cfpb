@@ -1,9 +1,31 @@
 
-# cfpbot
+# hubot-aws-cfpb
+
+This is a Hubot plugin. 
+We use this module for running a small subset of AWS ec2 commands via chat. 
+
+## Credit & divergence
+
+This project was originally a fork of https://github.com/yoheimuta/hubot-aws. 
+We removed significant functionality from the original application, diverged in the command format, and added, removed, 
+and enhanced the commands for our specific purposes. 
+
+## Contributing
+
+These changes are quite specific to our usage and highly unlikely to be reusable.
+
+More generic, reusable contributions should be made to https://github.com/yoheimuta/hubot-aws, not here.
+
+Contributions specific to our usage can be made here. See [[CONTRIBUTING]]
+
+## Configuration
+
+See [[INSTALL]]
 
 ## Commands
 
 ### List Instances
+
 #### Chat and my Instances
 ```
 cfpbot ec2 [mine|chat]
@@ -17,15 +39,6 @@ This command will list the instances created by chat bot.
 cfpbot ec2 filter [search_text]
 ```
 This command will show all instances that have the 'search_text' in the name.
-
-### SSH Commands
-
-#### Add SSH keys to cfpbot
-```ruby
-cfpbot my key is [public ssh key]
-```
-This command will add your ssh key to any instances you create in the future. 
-* public ssh key - is the public key text in your ~/.ssh directory.
 
 ### Creating, Stopping & Extending
 
@@ -48,7 +61,7 @@ This command will stop, not terminate, an ec2-instance of a given id. It will on
 ```ruby
 cfpbot ec2 start [instance_id]
 ```
-This command will start an ec2-instance of a given id. It will only allow you to start instances that you originally created. 
+This command will start an ec2-instance of a given id. 
 * instance_id - The instance id of the ec2 instance which you can get from the `List Instances` commands.
 
 #### Extend an Instance's Expiration Date
@@ -59,6 +72,4 @@ This command will add two weeks to the expiration date of an ec2-instance create
 * instance_id - The instance id of the ec2 instance which you can get from the `List Instances` commands.
 
 
-## Fork & Divergence
-This project was originally a fork of https://github.com/yoheimuta/hubot-aws. We removed significant functionality from the original application, diverged in the command format, and added, removed, and enhanced the commands for our specific purposes. Given those drastic changes, we moved the bot's source code to it's own repo here. 
 
