@@ -32,7 +32,7 @@ getArgParams = (arg, filter="all", opt_arg="") ->
   else if filter == "chat"
     params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: [filter] }]
   else if filter == "filter" and instances.length
-    params['Filters'] = [{ Name: 'tag:Name', Values: ["#{instances[0]}*"] }]  
+    params['Filters'] = [{ Name: 'tag:Name', Values: ["*#{instances[0]}*"] }]
   else if instances.length
     params['InstanceIds'] = instances
 

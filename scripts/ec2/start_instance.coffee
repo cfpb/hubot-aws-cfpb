@@ -9,11 +9,37 @@
 #   --dry-run  : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
 
 util = require 'util'
+subnet = require './subnet'
+ec2 = require('../../ec2.coffee')
 
 getArgParams = (arg) ->
   dry_run = if arg.match(/--dry-run/) then true else false
 
   return {dry_run: dry_run}
+
+
+startInstance = (params, msg, instances, err) ->
+  return (err) ->
+    if err
+      msg.send "Error! #{err}"
+      return
+
+    dry_run = params.dry_run
+    msg.send "Starting instances=[#{instances}] dry-run=#{dry_run}..."
+
+    params = {InstanceIds: instances, DryRun: dry_run}
+
+    if dry_run
+      msg.send util.inspect(params, false, null)
+
+    ec2.startInstances params, (err, res) ->
+      if err
+        msg.send "Error: #{err}"
+      else
+       msg.send "Success! The instances are starting"
+       msg.send util.inspect(res, false, null)
+
+
 
 module.exports = (robot) ->
   robot.respond /ec2 start(.*)$/i, (msg) ->
@@ -29,26 +55,8 @@ module.exports = (robot) ->
       if av and not av.match(/^--/)
         instances.push(av)
 
-    dry_run = arg_params.dry_run
-
     if instances.length < 1
       msg.send "One or more instance_ids are required"
       return
 
-    msg.send "Starting instances=[#{instances}] dry-run=#{dry_run}..."
-
-    params =
-      InstanceIds: instances
-
-    if dry_run
-      msg.send util.inspect(params, false, null)
-      return
-
-    ec2 = require('../../ec2.coffee')
-
-    ec2.startInstances params, (err, res) ->
-      if err
-        msg.send "Error: #{err}"
-      else
-       msg.send "Success! The instances are starting"
-       msg.send util.inspect(res, false, null)
+     subnet.withValidSubnet(process.env, instances, startInstance(arg_params, msg, instances))
