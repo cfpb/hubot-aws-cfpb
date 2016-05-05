@@ -8,17 +8,16 @@
 #   instance_id : [required] The ID of one or more instances to tag. For example, i-0acec691.
 #   --dry-run  : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
 
-util = require 'util'
-subnet = require './subnet'
 ec2 = require('../../ec2.coffee')
+restrictor = require './restrictor'
+util = require 'util'
 
 getArgParams = (arg) ->
   dry_run = if arg.match(/--dry-run/) then true else false
-
   return {dry_run: dry_run}
 
 
-startInstance = (params, msg, instances, err) ->
+startInstances = (msg, params, instances, err) ->
   return (err) ->
     if err
       msg.send "Error! #{err}"
@@ -59,4 +58,5 @@ module.exports = (robot) ->
       msg.send "One or more instance_ids are required"
       return
 
-     subnet.withValidSubnet(process.env, instances, startInstance(arg_params, msg, instances))
+    arg_params = restrictor.addUserCreatedFilter(msg, arg_params)
+    restrictor.authorizeOperation(msg, arg_params, instances, startInstances(msg, arg_params, instances))
