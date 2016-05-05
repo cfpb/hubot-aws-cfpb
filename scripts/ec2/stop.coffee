@@ -2,19 +2,42 @@
 #   Stop ec2 instance
 #
 # Commands:
-#   hubot ec2 stop --instance_id=[instance_id] - Stop the Instance
+#   hubot ec2 stop <instance_id> [<instance_id> ...] Stop the instances
 #
 # Notes:
-#   --instance_id=***   : [required] One instance ID.
+#   instance_id : [required] The ID of one or more instances to stop. For example, i-0acec691.
 #   --dry-run           : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
+
+ec2 = require('../../ec2.coffee')
+restrictor = require './restrictor'
+util = require 'util'
 
 getArgParams = (arg) ->
   dry_run = if arg.match(/--dry-run/) then true else false
+  return {dry_run: dry_run}
 
-  ins_id_capture = /--instance_id=(.*?)( |$)/.exec(arg)
-  ins_id = if ins_id_capture then ins_id_capture[1] else null
+stopInstances = (msg, params, instances, err) ->
+  return (err) ->
+    if err
+      msg.send "Error! #{err}"
+      return
 
-  return {dry_run: dry_run, ins_id: ins_id}
+    dry_run = params.dry_run
+    msg.send "Stopping instances=[#{instances}], dry-run=#{dry_run}..."
+
+    params = { InstanceIds: instances, DryRun: dry_run }
+
+    if dry_run
+      msg.send util.inspect(params, false, null)
+
+    ec2.stopInstances params, (err, res) ->
+      if err
+        msg.send "Error: #{err}"
+      else
+        msg.send "Success! The instances are stopping"
+        msg.send util.inspect(res, false, null)
+
+
 
 module.exports = (robot) ->
   robot.respond /ec2 stop(.*)$/i, (msg) ->
@@ -22,38 +45,19 @@ module.exports = (robot) ->
       msg.send "You cannot access this feature. Please contact with admin"
       return
 
-    arg_params = getArgParams(msg.match[1])
-    ins_id  = arg_params.ins_id
-    dry_run = arg_params.dry_run
+    arg_value = msg.match[1]
+    arg_params = getArgParams(arg_value)
 
-    msg.send "Stopping instance_id=#{ins_id}, dry-run=#{dry_run}..."
+    instances = []
+    for av in arg_value.split /\s+/
+      if av and not av.match(/^--/)
+        instances.push(av)
 
-    ec2 = require('../../ec2.coffee')
+    if instances.length < 1
+      msg.send "One or more instance_ids are required"
+      return
 
-    creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
+    arg_params = restrictor.addUserCreatedFilter(msg, arg_params)
+    restrictor.authorizeOperation(msg, arg_params, instances, stopInstances(msg, arg_params, instances))
 
-    params = {
-      InstanceIds: [ins_id],
-      Filters: [{ Name: 'tag:Creator', Values: [creator_email] }]
-    }
 
-    ec2.describeInstances (params), (err, res) ->
-      
-      unless res.Reservations.length
-        msg.send "Permission denied to stop this instance. Only the creator can stop this instance. "
-        return 
-
-      ec2.stopInstances { DryRun: dry_run, InstanceIds: [ins_id] }, (err, res) ->
-        if err
-          msg.send "Error: #{err}"
-        else
-          messages = []
-          for ins in res.StoppingInstances
-            id     = ins.InstanceId
-            state  = ins.CurrentState.Name
-
-            messages.push("#{id}\t#{state}")
-
-          messages.sort()
-          message = messages.join "\n"
-          msg.send message
