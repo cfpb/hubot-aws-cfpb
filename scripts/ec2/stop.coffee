@@ -18,9 +18,7 @@ getArgParams = (arg) ->
 
 stopInstances = (msg, params, instances, err) ->
   return (err) ->
-    if err
-      msg.send "Error! #{err}"
-      return
+    return msg.send "Error! #{err}" if err
 
     dry_run = params.dry_run
     msg.send "Stopping instances=[#{instances}], dry-run=#{dry_run}..."
@@ -31,11 +29,10 @@ stopInstances = (msg, params, instances, err) ->
       msg.send util.inspect(params, false, null)
 
     ec2.stopInstances params, (err, res) ->
-      if err
-        msg.send "Error: #{err}"
-      else
-        msg.send "Success! The instances are stopping"
-        msg.send util.inspect(res, false, null)
+      return msg.send "Error! #{err}" if err
+
+      msg.send "Success! The instances are stopping"
+      msg.send util.inspect(res, false, null)
 
 
 
