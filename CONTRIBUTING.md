@@ -1,5 +1,13 @@
 # Guidance on how to contribute
 
+**Note**: This is the changelog for our heavily modified fork of https://github.com/yoheimuta/hubot-aws
+
+To contribute changes specific to our usage of hubot/aws, read below.
+
+To contribute reusable changes to `hubot-aws`, which is the source of and inspiration for this repo, go to https://github.com/yoheimuta/hubot-aws
+
+---
+
 > All contributions to this project will be released under the CC0 public domain
 > dedication. By submitting a pull request or filing a bug, issue, or
 > feature request, you are agreeing to comply with this waiver of copyright interest.
@@ -30,3 +38,12 @@ tests that validate implemented features and the presence or lack of defects.
 Additionally, the code should follow any stylistic and architectural guidelines
 prescribed by the project. In the absence of such guidelines, mimic the styles
 and patterns in the existing code-base.
+
+## Local development
+
+To work locally on this module, running inside of an instance of https://github.com/cfpb/CFPBot:
+
+1. Fork and clone locally
+1. In your cloned directory, run: `npm link`
+1. In your CFPBot directory, run: `npm link hubot-aws-cfpb`
+1. See [[INSTALL]] for additional configuration

@@ -9,6 +9,8 @@
 #   --do-not-start: [optional] Overrides the default action of starting instances after updating the ExpireDate
 #   --dry-run  : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
 
+ec2 = require('../../ec2.coffee')
+restrictor = require './restrictor'
 util = require 'util'
 
 getArgParams = (arg) ->
@@ -17,26 +19,12 @@ getArgParams = (arg) ->
 
   return {dry_run: dry_run, start_instances: start_instances}
 
-module.exports = (robot) ->
-  robot.respond /ec2 extend(.*)$/i, (msg) ->
-    unless require('../../auth.coffee').canAccess(robot, msg.envelope.user)
-      msg.send "You cannot access this feature. Please contact with admin"
-      return
+extendInstances = (msg, params, instances, err) ->
+  return (err) ->
+    return msg.send "Error! #{err}" if err
 
-    arg_value = msg.match[1]
-    arg_params = getArgParams(arg_value)
-
-    instances = []
-    for av in arg_value.split /\s+/
-      if av and not av.match(/^--/)
-        instances.push(av)
-
-    dry_run = arg_params.dry_run
-    start_instances = arg_params.start_instances
-
-    if instances.length < 1
-      msg.send "One or more instance_ids are required"
-      return
+    dry_run = params.dry_run
+    start_instances = params.start_instances
 
     msg.send "Extending ExpireDate for instances=[#{instances}] dry-run=#{dry_run}..."
 
@@ -52,6 +40,7 @@ module.exports = (robot) ->
     expireDatePretty = "#{expyyyy}-#{expmm}-#{expdd}"
 
     params =
+      DryRun: dry_run
       Resources: instances
       Tags: [
         { Key: 'ExpireDate', Value: expireDatePretty }
@@ -59,26 +48,41 @@ module.exports = (robot) ->
 
     if dry_run
       msg.send util.inspect(params, false, null)
-      return
-
-    ec2 = require('../../ec2.coffee')
 
     ec2.createTags params, (err, res) ->
-      if err
-        msg.send "Error: #{err}"
-      else
-        msg.send "Successfully extended the expiration date to #{expireDatePretty}"
-        msg.send util.inspect(res, false, null)
+      return msg.send "Error! #{err}" if err
 
-        # TODO break start_instances out into a decoupled function
-        # Start instances after extending the expiration date
-        if start_instances
-          start_params =
-            InstanceIds: instances
+      msg.send "Successfully extended the expiration date to #{expireDatePretty}"
 
-          msg.send "Ensuring the following instances are running: [#{instances}]"
-          ec2.startInstances start_params, (err, res) ->
-            if err
-              msg.send "Error: #{err}"
-            else
-              msg.send util.inspect(res, false, null)
+      # TODO break start_instances out into a decoupled function
+      # Start instances after extending the expiration date
+      if start_instances
+        start_params =
+          InstanceIds: instances
+
+        msg.send "Ensuring the following instances are running: [#{instances}]"
+        ec2.startInstances start_params, (err, res) ->
+          return msg.send "Error! #{err}" if err
+          msg.send util.inspect(res, false, null)
+
+
+module.exports = (robot) ->
+  robot.respond /ec2 extend(.*)$/i, (msg) ->
+    unless require('../../auth.coffee').canAccess(robot, msg.envelope.user)
+      msg.send "You cannot access this feature. Please contact with admin"
+      return
+
+    arg_value = msg.match[1]
+    arg_params = getArgParams(arg_value)
+
+    instances = []
+    for av in arg_value.split /\s+/
+      if av and not av.match(/^--/)
+        instances.push(av)
+
+    if instances.length < 1
+      msg.send "One or more instance_ids are required"
+      return
+
+    arg_params = restrictor.addUserCreatedFilter(msg, arg_params)
+    restrictor.authorizeOperation(msg, arg_params, instances, extendInstances(msg, arg_params, instances))

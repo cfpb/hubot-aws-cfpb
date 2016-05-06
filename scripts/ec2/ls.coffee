@@ -7,13 +7,13 @@
 #
 # Commands:
 #   hubot ec2 ls - Displays Instances
+#   hubot ec2 ls instance_id - Displays details about 'instance_id'
 #   hubot ec2 mine - Displays Instances I've created, based on user email
 #   hubot ec2 chat - Displays Instances created via chat
 #   hubot ec2 filter sometext - Filters instances starting with 'sometext'
 
-
+gist = require 'quick-gist'
 moment = require 'moment'
-util   = require 'util'
 tsv    = require 'tsv'
 
 ec2 = require('../../ec2.coffee')
@@ -32,7 +32,7 @@ getArgParams = (arg, filter="all", opt_arg="") ->
   else if filter == "chat"
     params['Filters'] = [{ Name: 'tag:CreatedByApplication', Values: [filter] }]
   else if filter == "filter" and instances.length
-    params['Filters'] = [{ Name: 'tag:Name', Values: ["#{instances[0]}*"] }]  
+    params['Filters'] = [{ Name: 'tag:Name', Values: ["*#{instances[0]}*"] }]
   else if instances.length
     params['InstanceIds'] = instances
 
@@ -135,8 +135,15 @@ error_ec2_instances = (msg, err) ->
     msg.send "DescribeInstancesError: #{err}"
 
 complete_ec2_instances = (msg, instances) ->
-  return (instances) -> 
-    msg.send messages_from_ec2_instances(instances)
+  return (instances) ->
+
+    msgs = messages_from_ec2_instances(instances)
+    if msgs.length < 1000
+      msg.send msgs
+    else
+      gist {content: msgs, enterpriseOnly: true}, (err, resp, data) ->
+        url = data.html_url
+        msg.send "View instances at: " + url
 
 module.exports = (robot) ->
   
