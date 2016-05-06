@@ -21,9 +21,7 @@ getArgParams = (arg) ->
 
 extendInstances = (msg, params, instances, err) ->
   return (err) ->
-    if err
-      msg.send "Error! #{err}"
-      return
+    return msg.send "Error! #{err}" if err
 
     dry_run = params.dry_run
     start_instances = params.start_instances
@@ -52,23 +50,20 @@ extendInstances = (msg, params, instances, err) ->
       msg.send util.inspect(params, false, null)
 
     ec2.createTags params, (err, res) ->
-      if err
-        msg.send "Error: #{err}"
-      else
-        msg.send "Successfully extended the expiration date to #{expireDatePretty}"
+      return msg.send "Error! #{err}" if err
 
-        # TODO break start_instances out into a decoupled function
-        # Start instances after extending the expiration date
-        if start_instances
-          start_params =
-            InstanceIds: instances
+      msg.send "Successfully extended the expiration date to #{expireDatePretty}"
 
-          msg.send "Ensuring the following instances are running: [#{instances}]"
-          ec2.startInstances start_params, (err, res) ->
-            if err
-              msg.send "Error: #{err}"
-            else
-              msg.send util.inspect(res, false, null)
+      # TODO break start_instances out into a decoupled function
+      # Start instances after extending the expiration date
+      if start_instances
+        start_params =
+          InstanceIds: instances
+
+        msg.send "Ensuring the following instances are running: [#{instances}]"
+        ec2.startInstances start_params, (err, res) ->
+          return msg.send "Error! #{err}" if err
+          msg.send util.inspect(res, false, null)
 
 
 module.exports = (robot) ->
