@@ -1,5 +1,5 @@
 .idea
 node_modules
 .DS_Store*
-ihubot-aws.iml
+hubot-aws.iml
 
