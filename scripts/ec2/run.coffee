@@ -180,6 +180,7 @@ module.exports = (robot) ->
             name = tag.Value || '[NoName]'
 
           messages.push("#{state}\t#{id}\t#{type}\t#{ip}\t#{name}")
+          messages.push("\nIn about 10 minutes, you should be able to ssh in with ssh ec2-user@#{ip}\n")
 
         messages.sort()
         message = messages.join "\n"
