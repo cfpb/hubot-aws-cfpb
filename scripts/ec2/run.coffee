@@ -14,7 +14,7 @@
 #   --image_id=***      : [optional] The ID of the AMI. If omit it, the ImageId of config is used
 #   --config_path=***   : [optional] Config file path. If omit it, HUBOT_AWS_EC2_RUN_CONFIG is referred to.
 #   --userdata_path=*** : [optional] Userdata file path to be not encoded yet. If omit it, HUBOT_AWS_EC2_RUN_USERDATA_PATH is referred to.
-#   --team=***          : [optional] Name of team the instance belongs to. The public keys of everyone on the team will be added to the instance.
+#   --squad=***         : [optional] Name of squad the instance belongs to. The public keys of everyone on the squad will be added to the instance. Requires `hubot-squads`.
 #   --dry-run           : [optional] Checks whether the api request is right. Recommend to set before applying to real asset.
 
 fs   = require 'fs'
@@ -34,10 +34,10 @@ getArgParams = (arg) ->
   userdata_path_capture = /--userdata_path=(.*?)( |$)/.exec(arg)
   userdata_path = if userdata_path_capture then userdata_path_capture[1] else null
 
-  team_capture = /--team=(.*?)( |$)/.exec(arg)
-  team = if team_capture then team_capture[1] else null
+  squad_capture = /--(squad|team)=(.*?)( |$)/.exec(arg)
+  squad = if squad_capture then squad_capture[2] else null
 
-  return {dry_run: dry_run, image_id: image_id, config_path: config_path, userdata_path: userdata_path, team: team}
+  return {dry_run: dry_run, image_id: image_id, config_path: config_path, userdata_path: userdata_path, squad: squad}
 
 module.exports = (robot) ->
 
@@ -54,7 +54,7 @@ module.exports = (robot) ->
     image_id      = arg_params.image_id
     config_path   = arg_params.config_path
     userdata_path = arg_params.userdata_path
-    team          = arg_params.team
+    squad         = arg_params.squad
 
     config_path ||= process.env.HUBOT_AWS_EC2_RUN_CONFIG
     unless fs.existsSync config_path
@@ -67,14 +67,14 @@ module.exports = (robot) ->
 
     ssh_key = ''
 
-    # Check if a team was specified and if teams exist in the brain
-    if team and robot.brain.data.teams and robot.brain.data.teams[team]
-      robot.brain.data.teams[team].members.forEach (member) ->
+    # Check if a squad was specified and if squads exist in the brain
+    if squad and robot.brain.data.squads and robot.brain.data.squads[squad]
+      robot.brain.data.squads[squad].members.forEach (member) ->
         member = robot.brain.userForName(member)
         if member and member.key
           ssh_key += member.key + '\n'
         return
-    # If we're not using teams, check for the user's key
+    # If we're not using squads, check for the user's key
     else if robot.brain.userForId(msg.envelope.user.id).key
       ssh_key = robot.brain.userForId(msg.envelope.user.id).key
 
@@ -122,13 +122,13 @@ module.exports = (robot) ->
       return
 
     # TODO: yank this out into functions; replace with moment.js goodness
-    today = new Date  
-    dd = today.getDate()  
-    mm = today.getMonth() + 1  
-    yyyy = today.getFullYear()  
-    if dd < 10  
-      dd = '0' + dd  
-    if mm < 10  
+    today = new Date
+    dd = today.getDate()
+    mm = today.getMonth() + 1
+    yyyy = today.getFullYear()
+    if dd < 10
+      dd = '0' + dd
+    if mm < 10
       mm = '0' + mm
 
     expireDate = new Date
@@ -193,4 +193,3 @@ module.exports = (robot) ->
         ec2.createTags params, (err, res) ->
             if err
               msg.send "Error creating tags: #{err}"
-
