@@ -11,7 +11,9 @@
 #   hubot ec2 mine - Displays Instances I've created, based on user email
 #   hubot ec2 chat - Displays Instances created via chat
 #   hubot ec2 filter sometext - Filters instances starting with 'sometext'
-
+#   hubot ec2 expired - Displays instances that have expired
+#   hubot ec2 expiring - Displays instances that are expiring within 2 days
+#
 gist = require 'quick-gist'
 moment = require 'moment'
 _ = require 'underscore'
@@ -20,7 +22,7 @@ tsv = require 'tsv'
 EXPIRED_MESSAGE = "Instances that have expired \n"
 EXPIRES_SOON_MESSAGE = "Instances that will expire soon \n"
 USER_EXPIRES_SOON_MESSAGE = "List of your instances that will expire soon: \n"
-EXTEND_COMMAND ="\nIf you wish to extend run 'cfpbot ec2 extend [instanceIds]'"
+EXTEND_COMMAND = "\nIf you wish to extend run 'cfpbot ec2 extend [instanceIds]'"
 DAYS_CONSIDERED_SOON = 2
 
 
@@ -40,7 +42,7 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
   else if filter == "chat"
     params['Filters'] = [{Name: 'tag:CreatedByApplication', Values: [filter]}]
   else if filter == "filter" and instances.length
-    params['Filters'] = [{ Name: 'tag:Name', Values: ["*#{instances[0]}*"] }]
+    params['Filters'] = [{Name: 'tag:Name', Values: ["*#{instances[0]}*"]}]
   else if instances.length
     params['InstanceIds'] = instances
 
@@ -96,13 +98,13 @@ get_instance_tag = (instance, key, default_value = "")->
   else
     return default_value
 
-list_expiring_msg=(msg)->
+list_expiring_msg = (msg)->
   return (instances)->
     instances_that_will_expire = instances.filter instance_will_expire_soon
     msg_text_expire_soon = extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
     msg.send(msg_text_expire_soon)
 
-list_expired_msg=(msg)->
+list_expired_msg = (msg)->
   return (instances)->
     instances_that_expired = instances.filter instance_has_expired
     msg_text_expired = extract_message(instances_that_expired, EXPIRED_MESSAGE)
@@ -160,7 +162,6 @@ ec2_setup_polling = (robot) ->
   , 1000 * 60 * 60 * 8
 
 messages_from_ec2_instances = (instances) ->
-
   messages = []
   for instance in instances
     name = '[NoName]'
@@ -190,7 +191,6 @@ error_ec2_instances = (msg, err) ->
 
 complete_ec2_instances = (msg, instances) ->
   return (instances) ->
-
     msgs = messages_from_ec2_instances(instances)
     if msgs.length < 1000
       msg.send msgs
@@ -200,7 +200,6 @@ complete_ec2_instances = (msg, instances) ->
         msg.send "View instances at: " + url
 
 module.exports = (robot) ->
-
   ec2_setup_polling(robot)
 
   robot.respond /ec2 ls(.*)$/i, (msg) ->
@@ -231,8 +230,10 @@ module.exports = (robot) ->
 
   robot.respond /ec2 expiring$/i, (msg)->
     msg.send "Fetching all instances expiring within #{DAYS_CONSIDERED_SOON} days"
+
     listEC2Instances(null, list_expiring_msg(msg), error_ec2_instances())
 
   robot.respond /ec2 expired$/i, (msg)->
     msg.send "Fetching all instances that are expired"
+
     listEC2Instances(null, list_expired_msg(msg), error_ec2_instances())
