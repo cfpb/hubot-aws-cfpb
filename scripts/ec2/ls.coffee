@@ -10,7 +10,7 @@
 #   hubot ec2 ls instance_id - Displays details about 'instance_id'
 #   hubot ec2 mine - Displays Instances I've created, based on user email
 #   hubot ec2 chat - Displays Instances created via chat
-#   hubot ec2 filter sometext - Filters instances starting with 'sometext'
+#   hubot ec2 filter sometext - Filters instances whose name (name tag value) contains 'sometext'
 #   hubot ec2 expired - Displays instances that have expired
 #   hubot ec2 expiring - Displays instances that are expiring within 2 days
 #
