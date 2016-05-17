@@ -86,7 +86,7 @@ instance_has_expired = (instance) ->
   expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
 
   is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
-  return is_not_expired_now
+  return is_not_expired_now and instance.State.Name == "running"
 
 extract_message = (instances, msg)->
   return msg + messages_from_ec2_instances(instances)
