@@ -129,18 +129,6 @@ handle_instances = (robot) ->
 
       if user_instances.length
         msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
-
-    msg_room(msg_text_expired)
-    msg_room(msg_text_expire_soon)
-
-    for user in _.values(robot.brain.data.users)
-      creator_email = user.email_address
-      user_id = user.id
-
-      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowereCase() == creator_email.toLowerCase())
-
-      if user_instances.length
-        msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
         msg_room("@#{user.name}: #{msg_text_expire_soon}")
 
     instanceIdsToStop = _.pluck(instances_that_expired, 'InstanceId')
