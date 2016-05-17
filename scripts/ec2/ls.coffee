@@ -144,7 +144,7 @@ handle_ec2_instance = (robot) ->
 ec2_setup_polling = (robot) ->
   setInterval ->
     handle_ec2_instance(robot)?
-  , 1000 * 20 * 1 * 1
+  , 1000 * 60 * 60 * 8
 
 messages_from_ec2_instances = (instances) ->
   messages = []
@@ -168,14 +168,15 @@ messages_from_ec2_instances = (instances) ->
   messages.sort (a, b) ->
     moment(a.time) - moment(b.time)
 
+  resp = ""
   if messages.length
-    resp = "\n---\n| time | state | id | image | zone | subnet | type | ip | name |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| time | state | id | image | zone | subnet | type | ip | name |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
     for m in messages
-      resp += resp + "| #{m.time} | #{m.state} | #{m.id} | #{m.image} | #{m.az} | #{m.subnet} | #{m.type} | #{m.ip} | #{m.name} |\n"
+      resp += "| #{m.time} | #{m.state} | #{m.id} | #{m.image} | #{m.az} | #{m.subnet} | #{m.type} | #{m.ip} | #{m.name} |\n"
     resp += "---\n"
     return resp
   else
-    return ""
+    return "\n[None]\n"
 
 error_ec2_instances = (msg, err) ->
   return (err) ->
