@@ -76,7 +76,7 @@ instance_will_expire_soon = (instance) ->
   expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
   will_be_expired_in_x_days = expiraton_moment <= moment().add(DAYS_CONSIDERED_SOON, 'days').format('YYYY-MM-DD')
   is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
-  return will_be_expired_in_x_days and not is_not_expired_now
+  return will_be_expired_in_x_days and not is_not_expired_now and instance.State.Name == "running"
 
 instance_has_expired = (instance) ->
   expiration_tag = instance.Tags.filter get_expiration_tag
@@ -122,10 +122,10 @@ handle_instances = (robot) ->
     msg_room(msg_text_expire_soon)
 
     for user in _.values(robot.brain.data.users)
-      creator_email = user.email_address
+      creator_email = user.email_address || ""
       user_id = user.id
 
-      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowereCase() == creator_email.toLowerCase())
+      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowerCase() == creator_email.toLowerCase())
 
       if user_instances.length
         msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
@@ -144,7 +144,7 @@ handle_ec2_instance = (robot) ->
 ec2_setup_polling = (robot) ->
   setInterval ->
     handle_ec2_instance(robot)?
-  , 1000 * 60 * 60 * 8
+  , 1000 * 20 * 1 * 1
 
 messages_from_ec2_instances = (instances) ->
   messages = []
@@ -167,8 +167,15 @@ messages_from_ec2_instances = (instances) ->
 
   messages.sort (a, b) ->
     moment(a.time) - moment(b.time)
-  return tsv.stringify(messages) || '[None]'
 
+  if messages.length
+    resp = "\n---\n| time | state | id | image | zone | subnet | type | ip | name |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    for m in messages
+      resp += resp + "| #{m.time} | #{m.state} | #{m.id} | #{m.image} | #{m.az} | #{m.subnet} | #{m.type} | #{m.ip} | #{m.name} |\n"
+    resp += "---\n"
+    return resp
+  else
+    return ""
 
 error_ec2_instances = (msg, err) ->
   return (err) ->
