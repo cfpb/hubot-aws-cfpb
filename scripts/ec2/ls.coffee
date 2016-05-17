@@ -118,38 +118,35 @@ handle_instances = (robot) ->
     instances_that_expired = instances.filter instance_has_expired
     instances_that_will_expire = instances.filter instance_will_expire_soon
 
-    msg_text_expired = extract_message(instances_that_expired, EXPIRED_MESSAGE)
     msg_text_expire_soon = extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
-
-    msg_room(msg_text_expired)
     msg_room(msg_text_expire_soon)
 
     for user in _.values(robot.brain.data.users)
-      creator_email = user.email_address || "_DL_CFPB_Software_Delivery_Team@cfpb.gov"
-      user_id = user.id || 1
+      creator_email = user.email_address
+      user_id = user.id
 
-      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator') == creator_email)
+      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowereCase() == creator_email.toLowerCase())
 
-      if user_instances
+      if user_instances.length
         msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
 
     msg_room(msg_text_expired)
     msg_room(msg_text_expire_soon)
 
     for user in _.values(robot.brain.data.users)
-      creator_email = user.email_address || "_DL_CFPB_Software_Delivery_Team@cfpb.gov"
-      user_id = user.id || 1
+      creator_email = user.email_address
+      user_id = user.id
 
-      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator') == creator_email)
+      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowereCase() == creator_email.toLowerCase())
 
-      if user_instances
+      if user_instances.length
         msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
-        robot.send({user: user_id}, msg_text_expire_soon)
+        msg_room("@#{user.name}: #{msg_text_expire_soon}")
 
-    ec2.stopInstances {InstanceIds: _.pluck(instances_that_expired, 'InstanceId')}, (err, res) ->
+    instanceIdsToStop = _.pluck(instances_that_expired, 'InstanceId')
+    ec2.stopInstances {InstanceIds: instanceIdsToStop}, (err, res) ->
       if err
-        msg_room(res)
-
+        msg_room(err)
 
 handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
@@ -231,9 +228,9 @@ module.exports = (robot) ->
   robot.respond /ec2 expiring$/i, (msg)->
     msg.send "Fetching all instances expiring within #{DAYS_CONSIDERED_SOON} days"
 
-    listEC2Instances(null, list_expiring_msg(msg), error_ec2_instances())
+    listEC2Instances(null, list_expiring_msg(msg), error_ec2_instances(msg))
 
   robot.respond /ec2 expired$/i, (msg)->
     msg.send "Fetching all instances that are expired"
 
-    listEC2Instances(null, list_expired_msg(msg), error_ec2_instances())
+    listEC2Instances(null, list_expired_msg(msg), error_ec2_instances(msg))
