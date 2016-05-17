@@ -101,14 +101,12 @@ get_instance_tag = (instance, key, default_value = "")->
 list_expiring_msg = (msg)->
   return (instances)->
     instances_that_will_expire = instances.filter instance_will_expire_soon
-    msg_text_expire_soon = extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
-    msg.send(msg_text_expire_soon)
+    handle_sending_message msg, extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
 
 list_expired_msg = (msg)->
   return (instances)->
     instances_that_expired = instances.filter instance_has_expired
-    msg_text_expired = extract_message(instances_that_expired, EXPIRED_MESSAGE)
-    msg.send(msg_text_expired)
+    handle_sending_messages msg, extract_message(instances_that_expired, EXPIRED_MESSAGE)
 
 handle_instances = (robot) ->
   msg_room = (msg_text, room = process.env.HUBOT_EC2_MENTION_ROOM) ->
@@ -182,15 +180,17 @@ error_ec2_instances = (msg, err) ->
   return (err) ->
     msg.send "DescribeInstancesError: #{err}"
 
+handle_sending_message = (msg, messages) ->
+  if messages.length < 1000
+    msg.send messages
+  else
+    gist {content: messages, enterpriseOnly: true}, (err, resp, data) ->
+      url = data.html_url
+      msg.send "View instances at: " + url
+
 complete_ec2_instances = (msg, instances) ->
   return (instances) ->
-    msgs = messages_from_ec2_instances(instances)
-    if msgs.length < 1000
-      msg.send msgs
-    else
-      gist {content: msgs, enterpriseOnly: true}, (err, resp, data) ->
-        url = data.html_url
-        msg.send "View instances at: " + url
+    handle_sending_message msg, messages_from_ec2_instances(instances)
 
 module.exports = (robot) ->
   ec2_setup_polling(robot)
