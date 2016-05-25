@@ -128,7 +128,7 @@ handle_instances = (robot) ->
 
         if user_instances.length
           msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
-          msg_room("@#{user.name}: #{msg_text_expire_soon}")
+          msg_room(msg_text_expire_soon, user.name)
 
     instanceIdsToStop = _.pluck(instances_that_expired, 'InstanceId')
     if instanceIdsToStop.length
