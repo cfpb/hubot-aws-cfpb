@@ -18,6 +18,7 @@ gist = require 'quick-gist'
 moment = require 'moment'
 _ = require 'underscore'
 tsv = require 'tsv'
+util = require 'util'
 
 EXPIRED_MESSAGE = "Instances that have expired \n"
 EXPIRES_SOON_MESSAGE = "Instances that will expire soon \n"
@@ -29,11 +30,14 @@ DAYS_CONSIDERED_SOON = 2
 ec2 = require('../../ec2.coffee')
 
 getArgParams = (arg, filter = "all", opt_arg = "") ->
-  instances = []
+  filterValues = []
   if arg
     for av in arg.split /\s+/
       if av and not av.match(/^--/)
-        instances.push(av)
+        filterValues.push(av)
+
+  #console.log "filterValues are: "
+  #console.log util.inspect(filterValues, false, null)
 
   params = {}
 
@@ -41,10 +45,10 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
     params['Filters'] = [{Name: 'tag:Creator', Values: [opt_arg]}]
   else if filter == "chat"
     params['Filters'] = [{Name: 'tag:CreatedByApplication', Values: [filter]}]
-  else if filter == "filter" and instances.length
-    params['Filters'] = [{Name: 'tag:Name', Values: ["*#{instances[0]}*"]}]
-  else if instances.length
-    params['InstanceIds'] = instances
+  else if filter == "filter" and filterValues.length
+    params['Filters'] = [{Name: 'tag-value', Values: ["*#{filterValues[0]}*"]}]
+  else if filterValues.length
+    params['InstanceIds'] = filterValues
 
   if Object.keys(params).length > 0
     return params
@@ -52,6 +56,10 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
     return null
 
 listEC2Instances = (params, complete, error) ->
+
+  console.log util.inspect(params, false, null)
+
+
   ec2.describeInstances params, (err, res) ->
     if err
       error(err)
@@ -152,17 +160,18 @@ messages_from_ec2_instances = (instances) ->
     name = '[NoName]'
     for tag in instance.Tags when tag.Key is 'Name'
       name = tag.Value
+    description = ''
+    for tag in instance.Tags when tag.Key is 'Description'
+      description = tag.Value
 
     messages.push({
-      time: moment(instance.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
+      time: moment(instance.LaunchTime).format('YYYY-MM-DD')
       state: instance.State.Name
       id: instance.InstanceId
-      image: instance.ImageId
-      az: instance.Placement.AvailabilityZone
-      subnet: instance.SubnetId
       type: instance.InstanceType
       ip: instance.PrivateIpAddress
       name: name || '[NoName]'
+      description: description || ''
     })
 
   messages.sort (a, b) ->
@@ -170,9 +179,11 @@ messages_from_ec2_instances = (instances) ->
 
   resp = ""
   if messages.length
-    resp = "\n| time | state | id | image | zone | subnet | type | ip | name |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| id | ip | name | state | description | type | launched |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+
     for m in messages
-      resp += "| #{m.time} | #{m.state} | #{m.id} | #{m.image} | #{m.az} | #{m.subnet} | #{m.type} | #{m.ip} | #{m.name} |\n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} |\n"
+
     resp += "---\n"
     return resp
   else
