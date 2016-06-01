@@ -114,7 +114,7 @@ list_expiring_msg = (msg)->
 list_expired_msg = (msg)->
   return (instances)->
     instances_that_expired = instances.filter instance_has_expired
-    handle_sending_messages msg, extract_message(instances_that_expired, EXPIRED_MESSAGE)
+    handle_sending_message msg, extract_message(instances_that_expired, EXPIRED_MESSAGE)
 
 handle_instances = (robot) ->
   msg_room = (msg_text, room = process.env.HUBOT_EC2_MENTION_ROOM) ->
@@ -140,6 +140,8 @@ handle_instances = (robot) ->
 
     instanceIdsToStop = _.pluck(instances_that_expired, 'InstanceId')
     if instanceIdsToStop.length
+      console.log "Stopping expired EC2 instances: #{instanceIdsToStop}"
+
       ec2.stopInstances {InstanceIds: instanceIdsToStop}, (err, res) ->
         if err
           msg_room(err)
