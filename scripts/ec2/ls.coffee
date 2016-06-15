@@ -26,7 +26,6 @@ USER_EXPIRES_SOON_MESSAGE = "List of your instances that will expire soon: \n"
 EXTEND_COMMAND = "\nIf you wish to extend run 'cfpbot ec2 extend [instanceIds]'"
 DAYS_CONSIDERED_SOON = 2
 
-
 ec2 = require('../../ec2.coffee')
 
 getArgParams = (arg, filter = "all", opt_arg = "") ->
@@ -45,6 +44,8 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
     params['Filters'] = [{Name: 'tag:Creator', Values: [opt_arg]}]
   else if filter == "chat"
     params['Filters'] = [{Name: 'tag:CreatedByApplication', Values: [filter]}]
+  else if filter == "windows"
+    params['Filters'] = [{Name: 'platform', Values: [filter]}]  
   else if filter == "filter" and filterValues.length
     params['Filters'] = [{Name: 'tag-value', Values: ["*#{filterValues[0]}*"]}]
   else if filterValues.length
@@ -245,3 +246,9 @@ module.exports = (robot) ->
     msg.send "Fetching all instances that are expired"
 
     listEC2Instances(null, list_expired_msg(msg), error_ec2_instances(msg))
+
+  robot.respond /ec2 windows$/i, (msg)->
+    msg.send "Fetching all windows instances ..."
+    arg_params = getArgParams(arg = msg.match[1], filter = "windows")
+
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
