@@ -8,12 +8,12 @@
 # Commands:
 #   hubot ec2 ls - Displays Instances
 #   hubot ec2 ls instance_id - Displays details about 'instance_id'
-#   hubot ec2 mine - Displays Instances I've created, based on user email
-#   hubot ec2 chat - Displays Instances created via chat
-#   hubot ec2 filter sometext - Filters instances whose name (name tag value) contains 'sometext'
+#   hubot ec2 filter mine - Displays Instances I've created, based on user email
+#   hubot ec2 filter chat - Displays Instances created via chat
+#   hubot ec2 filter windows - Displays instances running the Windows OS
+#   hubot ec2 filter [sometext] - Filters instances whose tags contains [sometext]
 #   hubot ec2 expired - Displays instances that have expired
 #   hubot ec2 expiring - Displays instances that are expiring within 2 days
-#   hubot ec2 windows - Displays instances running the Windows OS
 #
 gist = require 'quick-gist'
 moment = require 'moment'
@@ -218,25 +218,31 @@ module.exports = (robot) ->
 
     listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
-  robot.respond /ec2 filter(.*)$/i, (msg) ->
-    arg_params = getArgParams(arg = msg.match[1], filter = "filter")
-    msg.send "Fetching filtered instances..."
+  robot.respond /ec2 filter chat$/i, (msg) ->
+    msg.send "Fetching instances created via chat ..."
+    arg_params = getArgParams(arg = msg.match[1], filter = "chat")
 
     listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
-  robot.respond /ec2 mine$/i, (msg) ->
+  robot.respond /ec2 filter mine$/i, (msg) ->
     creator_email = msg.message.user["email_address"] || process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown"
     msg.send "Fetching instances created by #{creator_email} ..."
     arg_params = getArgParams(arg = msg.match[1], filter = "mine", opt_arg = creator_email)
 
     listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
 
-
-  robot.respond /ec2 chat$/i, (msg) ->
-    msg.send "Fetching instances created via chat ..."
-    arg_params = getArgParams(arg = msg.match[1], filter = "chat")
+  robot.respond /ec2 filter windows$/i, (msg)->
+    msg.send "Fetching all windows instances ..."
+    arg_params = getArgParams(arg = msg.match[1], filter = "windows")
 
     listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+
+  robot.respond /ec2 filter(.*)$/i, (msg) ->
+    arg_params = getArgParams(arg = msg.match[1], filter = "filter")
+    msg.send "Fetching filtered instances..."
+
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
+
 
   robot.respond /ec2 expiring$/i, (msg)->
     msg.send "Fetching all instances expiring within #{DAYS_CONSIDERED_SOON} days"
@@ -248,8 +254,4 @@ module.exports = (robot) ->
 
     listEC2Instances(null, list_expired_msg(msg), error_ec2_instances(msg))
 
-  robot.respond /ec2 windows$/i, (msg)->
-    msg.send "Fetching all windows instances ..."
-    arg_params = getArgParams(arg = msg.match[1], filter = "windows")
 
-    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))
