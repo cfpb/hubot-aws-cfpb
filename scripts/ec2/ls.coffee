@@ -13,7 +13,7 @@
 #   hubot ec2 filter sometext - Filters instances whose name (name tag value) contains 'sometext'
 #   hubot ec2 expired - Displays instances that have expired
 #   hubot ec2 expiring - Displays instances that are expiring within 2 days
-#   hubot ec2 windows - Displays widows instances
+#   hubot ec2 windows - Displays instances running the Windows OS
 #
 gist = require 'quick-gist'
 moment = require 'moment'
