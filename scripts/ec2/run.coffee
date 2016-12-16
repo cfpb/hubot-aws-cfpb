@@ -151,6 +151,7 @@ module.exports = (robot) ->
       { Key: 'Software', Value: '' },
       { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown" },
       { Key: 'SysAdmin', Value: user_email },
+      { Key: 'Schedule', Value: '8:18' },
       { Key: 'CreatedByApplication', Value: 'chat' },
       { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"},
       { Key: 'ExpireDate', Value: "#{expyyyy}-#{expmm}-#{expdd}"}
