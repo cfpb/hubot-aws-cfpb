@@ -1,6 +1,6 @@
 {
   "name": "hubot-aws-cfpb",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "CFPB-specific Hubot aws commands. Forked from the excellent https://github.com/yoheimuta/hubot-aws/ and heavily modified for our particular usage needs",
   "repository": {
     "type": "git",
