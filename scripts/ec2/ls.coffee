@@ -167,6 +167,9 @@ messages_from_ec2_instances = (instances) ->
     description = ''
     for tag in instance.Tags when tag.Key is 'Description'
       description = tag.Value
+    expiration = ''
+    for tag in instance.Tags when tag.Key is 'ExpireDate'
+      expiration = tag.Value
 
     messages.push({
       time: moment(instance.LaunchTime).format('YYYY-MM-DD')
@@ -176,6 +179,7 @@ messages_from_ec2_instances = (instances) ->
       ip: instance.PrivateIpAddress
       name: name || '[NoName]'
       description: description || ''
+      expiration: expiration || ''
     })
 
   messages.sort (a, b) ->
@@ -183,10 +187,10 @@ messages_from_ec2_instances = (instances) ->
 
   resp = ""
   if messages.length
-    resp = "\n| id | ip | name | state | description | type | launched |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| id | ip | name | state | description | type | launched | expires |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
 
     for m in messages
-      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} |\n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} |\n"
 
     resp += "---\n"
     return resp
