@@ -19,6 +19,7 @@ gist = require 'quick-gist'
 moment = require 'moment'
 _ = require 'underscore'
 tsv = require 'tsv'
+tags = require './tags'
 util = require 'util'
 
 EXPIRED_MESSAGE = "Instances that have expired \n"
@@ -83,9 +84,9 @@ instance_will_expire_soon = (instance) ->
   if expiration_tag.length == 0
     return false
 
-  expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
-  will_be_expired_in_x_days = expiraton_moment <= moment().add(DAYS_CONSIDERED_SOON, 'days').format('YYYY-MM-DD')
-  is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
+  expiration_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
+  will_be_expired_in_x_days = expiration_moment <= moment().add(DAYS_CONSIDERED_SOON, 'days').format('YYYY-MM-DD')
+  is_not_expired_now = expiration_moment < moment().format('YYYY-MM-DD')
   return will_be_expired_in_x_days and not is_not_expired_now and instance.State.Name == "running"
 
 instance_has_expired = (instance) ->
@@ -93,9 +94,9 @@ instance_has_expired = (instance) ->
   if expiration_tag.length == 0
     return false
 
-  expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
+  expiration_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
 
-  is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
+  is_not_expired_now = expiration_moment < moment().format('YYYY-MM-DD')
   return is_not_expired_now and instance.State.Name == "running"
 
 extract_message = (instances, msg)->
@@ -147,6 +148,9 @@ handle_instances = (robot) ->
       ec2.stopInstances {InstanceIds: instanceIdsToStop}, (err, res) ->
         if err
           msg_room(err)
+        else
+          tags.removeSchedule(msg, instanceIdsToStop)
+
 
 handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
@@ -170,6 +174,12 @@ messages_from_ec2_instances = (instances) ->
     expiration = ''
     for tag in instance.Tags when tag.Key is 'ExpireDate'
       expiration = tag.Value
+    schedule = ''
+    for tag in instance.Tags when tag.Key is 'Schedule'
+      schedule = tag.Value
+    backup = ''
+    for tag in instance.Tags when tag.Key is 'Backup'
+      backup = tag.Value
 
     messages.push({
       time: moment(instance.LaunchTime).format('YYYY-MM-DD')
@@ -180,6 +190,8 @@ messages_from_ec2_instances = (instances) ->
       name: name || '[NoName]'
       description: description || ''
       expiration: expiration || ''
+      schedule: schedule || ''
+      backup: backup || ''
     })
 
   messages.sort (a, b) ->
@@ -187,10 +199,10 @@ messages_from_ec2_instances = (instances) ->
 
   resp = ""
   if messages.length
-    resp = "\n| id | ip | name | state | description | type | launched | expires |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| id | ip | name | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
 
     for m in messages
-      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} |\n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{backup} | \n"
 
     resp += "---\n"
     return resp

@@ -11,6 +11,7 @@
 
 ec2 = require('../../ec2.coffee')
 restrictor = require './restrictor'
+tags = require './tags'
 util = require 'util'
 
 getArgParams = (arg) ->
@@ -52,7 +53,10 @@ extendInstances = (msg, params, instances, err) ->
     ec2.createTags params, (err, res) ->
       return msg.send "Error! #{err}" if err
 
+      tags.addSchedule(msg, instances)
+
       msg.send "Successfully extended the expiration date to #{expireDatePretty}"
+      msg.send "\nThis instance defaults to running between 8 AM and 6 PM. You can change that schedule with the `ec2 schedule` command. See `bot help ec2 schedule` for details\n"
 
       # TODO break start_instances out into a decoupled function
       # Start instances after extending the expiration date
