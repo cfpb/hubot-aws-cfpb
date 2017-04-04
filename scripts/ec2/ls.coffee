@@ -202,7 +202,7 @@ messages_from_ec2_instances = (instances) ->
     resp = "\n| id | ip | name | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
 
     for m in messages
-      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{backup} | \n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{m.backup} | \n"
 
     resp += "---\n"
     return resp
