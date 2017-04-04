@@ -13,11 +13,14 @@
 #   hubot ec2 filter sometext - Filters instances whose name (name tag value) contains 'sometext'
 #   hubot ec2 expired - Displays instances that have expired
 #   hubot ec2 expiring - Displays instances that are expiring within 2 days
+#   hubot ec2 windows - Displays instances running the Windows OS
 #
 gist = require 'quick-gist'
 moment = require 'moment'
 _ = require 'underscore'
 tsv = require 'tsv'
+tags = require './tags'
+util = require 'util'
 
 EXPIRED_MESSAGE = "Instances that have expired \n"
 EXPIRES_SOON_MESSAGE = "Instances that will expire soon \n"
@@ -25,15 +28,17 @@ USER_EXPIRES_SOON_MESSAGE = "List of your instances that will expire soon: \n"
 EXTEND_COMMAND = "\nIf you wish to extend run 'cfpbot ec2 extend [instanceIds]'"
 DAYS_CONSIDERED_SOON = 2
 
-
 ec2 = require('../../ec2.coffee')
 
 getArgParams = (arg, filter = "all", opt_arg = "") ->
-  instances = []
+  filterValues = []
   if arg
     for av in arg.split /\s+/
       if av and not av.match(/^--/)
-        instances.push(av)
+        filterValues.push(av)
+
+  #console.log "filterValues are: "
+  #console.log util.inspect(filterValues, false, null)
 
   params = {}
 
@@ -41,10 +46,12 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
     params['Filters'] = [{Name: 'tag:Creator', Values: [opt_arg]}]
   else if filter == "chat"
     params['Filters'] = [{Name: 'tag:CreatedByApplication', Values: [filter]}]
-  else if filter == "filter" and instances.length
-    params['Filters'] = [{Name: 'tag:Name', Values: ["*#{instances[0]}*"]}]
-  else if instances.length
-    params['InstanceIds'] = instances
+  else if filter == "windows"
+    params['Filters'] = [{Name: 'platform', Values: [filter]}]  
+  else if filter == "filter" and filterValues.length
+    params['Filters'] = [{Name: 'tag-value', Values: ["*#{filterValues[0]}*"]}]
+  else if filterValues.length
+    params['InstanceIds'] = filterValues
 
   if Object.keys(params).length > 0
     return params
@@ -52,6 +59,10 @@ getArgParams = (arg, filter = "all", opt_arg = "") ->
     return null
 
 listEC2Instances = (params, complete, error) ->
+
+  console.log util.inspect(params, false, null)
+
+
   ec2.describeInstances params, (err, res) ->
     if err
       error(err)
@@ -73,9 +84,9 @@ instance_will_expire_soon = (instance) ->
   if expiration_tag.length == 0
     return false
 
-  expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
-  will_be_expired_in_x_days = expiraton_moment <= moment().add(DAYS_CONSIDERED_SOON, 'days').format('YYYY-MM-DD')
-  is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
+  expiration_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
+  will_be_expired_in_x_days = expiration_moment <= moment().add(DAYS_CONSIDERED_SOON, 'days').format('YYYY-MM-DD')
+  is_not_expired_now = expiration_moment < moment().format('YYYY-MM-DD')
   return will_be_expired_in_x_days and not is_not_expired_now and instance.State.Name == "running"
 
 instance_has_expired = (instance) ->
@@ -83,9 +94,9 @@ instance_has_expired = (instance) ->
   if expiration_tag.length == 0
     return false
 
-  expiraton_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
+  expiration_moment = moment(expiration_tag[0].Value).format('YYYY-MM-DD')
 
-  is_not_expired_now = expiraton_moment < moment().format('YYYY-MM-DD')
+  is_not_expired_now = expiration_moment < moment().format('YYYY-MM-DD')
   return is_not_expired_now and instance.State.Name == "running"
 
 extract_message = (instances, msg)->
@@ -106,7 +117,7 @@ list_expiring_msg = (msg)->
 list_expired_msg = (msg)->
   return (instances)->
     instances_that_expired = instances.filter instance_has_expired
-    handle_sending_messages msg, extract_message(instances_that_expired, EXPIRED_MESSAGE)
+    handle_sending_message msg, extract_message(instances_that_expired, EXPIRED_MESSAGE)
 
 handle_instances = (robot) ->
   msg_room = (msg_text, room = process.env.HUBOT_EC2_MENTION_ROOM) ->
@@ -116,23 +127,30 @@ handle_instances = (robot) ->
     instances_that_expired = instances.filter instance_has_expired
     instances_that_will_expire = instances.filter instance_will_expire_soon
 
-    msg_text_expire_soon = extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
-    msg_room(msg_text_expire_soon)
+    if instances_that_will_expire.length
+      msg_text_expire_soon = extract_message(instances_that_will_expire, EXPIRES_SOON_MESSAGE)
+      msg_room(msg_text_expire_soon)
 
-    for user in _.values(robot.brain.data.users)
-      creator_email = user.email_address || ""
-      user_id = user.id
+      for user in _.values(robot.brain.data.users)
+        creator_email = user.email_address || ""
+        user_id = user.id
 
-      user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowerCase() == creator_email.toLowerCase())
+        user_instances = _.filter(instances_that_will_expire, (this_instance)-> return get_instance_tag(this_instance, 'Creator').toLowerCase() == creator_email.toLowerCase())
 
-      if user_instances.length
-        msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
-        msg_room("@#{user.name}: #{msg_text_expire_soon}")
+        if user_instances.length
+          msg_text_expire_soon = extract_message(user_instances, USER_EXPIRES_SOON_MESSAGE) + EXTEND_COMMAND
+          msg_room(msg_text_expire_soon, user.name)
 
     instanceIdsToStop = _.pluck(instances_that_expired, 'InstanceId')
-    ec2.stopInstances {InstanceIds: instanceIdsToStop}, (err, res) ->
-      if err
-        msg_room(err)
+    if instanceIdsToStop.length
+      console.log "Stopping expired EC2 instances: #{instanceIdsToStop}"
+
+      ec2.stopInstances {InstanceIds: instanceIdsToStop}, (err, res) ->
+        if err
+          msg_room(err)
+        else
+          tags.removeSchedule(msg, instanceIdsToStop)
+
 
 handle_ec2_instance = (robot) ->
   if process.env.HUBOT_EC2_MENTION_ROOM
@@ -150,17 +168,30 @@ messages_from_ec2_instances = (instances) ->
     name = '[NoName]'
     for tag in instance.Tags when tag.Key is 'Name'
       name = tag.Value
+    description = ''
+    for tag in instance.Tags when tag.Key is 'Description'
+      description = tag.Value
+    expiration = ''
+    for tag in instance.Tags when tag.Key is 'ExpireDate'
+      expiration = tag.Value
+    schedule = ''
+    for tag in instance.Tags when tag.Key is 'Schedule'
+      schedule = tag.Value
+    backup = '[None]'
+    for tag in instance.Tags when tag.Key is 'Backup'
+      backup = tag.Value
 
     messages.push({
-      time: moment(instance.LaunchTime).format('YYYY-MM-DD HH:mm:ssZ')
+      time: moment(instance.LaunchTime).format('YYYY-MM-DD')
       state: instance.State.Name
       id: instance.InstanceId
-      image: instance.ImageId
-      az: instance.Placement.AvailabilityZone
-      subnet: instance.SubnetId
       type: instance.InstanceType
       ip: instance.PrivateIpAddress
       name: name || '[NoName]'
+      description: description || ''
+      expiration: expiration || ''
+      schedule: schedule || ''
+      backup: backup || '[None]'
     })
 
   messages.sort (a, b) ->
@@ -168,9 +199,11 @@ messages_from_ec2_instances = (instances) ->
 
   resp = ""
   if messages.length
-    resp = "\n| time | state | id | image | zone | subnet | type | ip | name |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| id | ip | name | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+
     for m in messages
-      resp += "| #{m.time} | #{m.state} | #{m.id} | #{m.image} | #{m.az} | #{m.subnet} | #{m.type} | #{m.ip} | #{m.name} |\n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{m.backup} | \n"
+
     resp += "---\n"
     return resp
   else
@@ -230,3 +263,9 @@ module.exports = (robot) ->
     msg.send "Fetching all instances that are expired"
 
     listEC2Instances(null, list_expired_msg(msg), error_ec2_instances(msg))
+
+  robot.respond /ec2 windows$/i, (msg)->
+    msg.send "Fetching all windows instances ..."
+    arg_params = getArgParams(arg = msg.match[1], filter = "windows")
+
+    listEC2Instances(arg_params, complete_ec2_instances(msg), error_ec2_instances(msg))

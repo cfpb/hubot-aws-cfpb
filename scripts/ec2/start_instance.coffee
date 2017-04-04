@@ -10,6 +10,7 @@
 
 ec2 = require('../../ec2.coffee')
 restrictor = require './restrictor'
+tags = require './tags'
 util = require 'util'
 
 getArgParams = (arg) ->
@@ -33,6 +34,7 @@ startInstances = (msg, params, instances, err) ->
       return msg.send "Error! #{err}" if err
 
       msg.send "Success! The instances are starting"
+      tags.addSchedule(msg, instances)
       msg.send util.inspect(res, false, null)
 
 

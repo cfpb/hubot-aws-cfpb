@@ -151,6 +151,7 @@ module.exports = (robot) ->
       { Key: 'Software', Value: '' },
       { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown" },
       { Key: 'SysAdmin', Value: user_email },
+      { Key: 'Schedule', Value: '8:18' },
       { Key: 'CreatedByApplication', Value: 'chat' },
       { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"},
       { Key: 'ExpireDate', Value: "#{expyyyy}-#{expmm}-#{expdd}"}
@@ -181,6 +182,7 @@ module.exports = (robot) ->
 
           messages.push("#{state}\t#{id}\t#{type}\t#{ip}\t#{name}")
           messages.push("\nIn about 10 minutes, you should be able to ssh in with ssh ec2-user@#{ip}\n")
+          messages.push("\nThis instance defaults to running between 8 AM and 6 PM. You can change that schedule with the `ec2 schedule` command. See `bot help ec2 schedule` for details\n")
 
         messages.sort()
         message = messages.join "\n"

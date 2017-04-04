@@ -10,6 +10,7 @@
 
 ec2 = require('../../ec2.coffee')
 restrictor = require './restrictor'
+tags = require './tags'
 util = require 'util'
 
 getArgParams = (arg) ->
@@ -33,6 +34,8 @@ stopInstances = (msg, params, instances, err) ->
 
       msg.send "Success! The instances are stopping"
       msg.send util.inspect(res, false, null)
+
+      tags.removeSchedule(msg, instances)
 
 
 
