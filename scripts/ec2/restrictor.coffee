@@ -11,7 +11,7 @@ restrictor =
 
   addInstanceFilter: (msg, params, instances) ->
     params = restrictor.ensureFilters(params)
-    params['Filters'].push {Name: 'instance-id', Values: instances}
+    params['InstanceIds'] = instances
     return params
 
   addSubnetFilter: (msg, params) ->

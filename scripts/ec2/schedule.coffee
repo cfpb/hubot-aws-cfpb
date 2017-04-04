@@ -34,11 +34,14 @@ scheduleIfAuthorized = (msg, instances, schedule, err) ->
   return (err) ->
     return msg.send "Error! #{err}" if err
     tags.addSchedule(msg, instances, schedule)
+    msg.send "Schedule added to #{instances}. Those instances will now start and stop on a schedule of #{schedule}"
+
 
 unscheduleIfAuthorized = (msg, instances, err) ->
   return (err) ->
     return msg.send "Error! #{err}" if err
     tags.removeSchedule(msg, instances)
+    msg.send "Schedule removed from #{instances}"
 
 #credit: https://github.com/yoheimuta/hubot-aws/blob/master/scripts/ec2/create_tags.coffee
 getScheduleOptions = (args) ->
@@ -61,7 +64,6 @@ module.exports = (robot) ->
 
     arg_params = restrictor.addUserCreatedFilter(msg, {})
     restrictor.authorizeOperation(msg, arg_params, instances, scheduleIfAuthorized(msg, instances, schedule))
-    msg.send "Schedule added to #{instances}. Those instances will now start and stop on a schedule of #{schedule}"
 
   robot.respond /ec2 unschedule(.*)$/i, (msg) ->
 
@@ -70,4 +72,3 @@ module.exports = (robot) ->
 
       arg_params = restrictor.addUserCreatedFilter(msg, {})
       restrictor.authorizeOperation(msg, arg_params, instances, unscheduleIfAuthorized(msg, instances))
-      msg.send "Schedule removed from #{instances}"
