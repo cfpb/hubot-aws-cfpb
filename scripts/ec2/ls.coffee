@@ -177,7 +177,7 @@ messages_from_ec2_instances = (instances) ->
     schedule = ''
     for tag in instance.Tags when tag.Key is 'Schedule'
       schedule = tag.Value
-    backup = ''
+    backup = '[None]'
     for tag in instance.Tags when tag.Key is 'Backup'
       backup = tag.Value
 
@@ -191,7 +191,7 @@ messages_from_ec2_instances = (instances) ->
       description: description || ''
       expiration: expiration || ''
       schedule: schedule || ''
-      backup: backup || ''
+      backup: backup || '[None]'
     })
 
   messages.sort (a, b) ->
