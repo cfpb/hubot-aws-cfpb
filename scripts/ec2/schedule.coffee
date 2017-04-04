@@ -25,7 +25,7 @@ createInstancesArray = (instance_ids) ->
     instances = []
     instance_ids = instance_ids.replace /^\s+|\s+$/g, ""
     for i in instance_ids.split /\s+/
-      if i and not i.match(/^--/)
+      if i and i.match(/^i-/)
         instances.push(i)
 
     return instances
