@@ -40,11 +40,16 @@ restrictor =
     ec2Params = {Filters: params['Filters']}
     ec2.describeInstances ec2Params, (err, res) ->
         if err
+          console.log util.inspect(err, false, null)
           cb(err)
         else
-          if res.Reservations.length == instances.length
+          # the Reservations data will contain *at least* all the instances we're filtering on, and possibly any other instances that were created/stopped/started in the same command
+          # thus we can safely ignore the existence of additional Reservations in this check because we know the ones we care about will be in here if all filter criteria are successfully met
+          if res.Reservations.length >= instances.length
             cb(null)
           else
+            console.log res.Reservations.length
+            console.log util.inspect(res.Reservations, false, null)
             cb("Operation not permitted. Instance #{instances} does not exist in the approved subnet or wasn't created by you")
 
 module.exports = restrictor
