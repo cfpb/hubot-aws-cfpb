@@ -31,21 +31,23 @@ restrictor =
   authorizeOperation: (msg, params, instances, cb) ->
 
     console.log "Inspecting instance [#{instances}] for permission to run this operation"
-
-    params = restrictor.addInstanceFilter msg, params, instances
-    params = restrictor.addSubnetFilter msg, params
     console.log util.inspect(params, false, null)
 
     # params is a bus for all args passed to the command, so we need to strip out all but the valid ec2 filters we're sending
+    ec2Params = restrictor.ensureFilters(params)
     ec2Params = {Filters: params['Filters']}
+
+    ec2Params = restrictor.addInstanceFilter msg, ec2Params, instances
+    ec2Params = restrictor.addSubnetFilter msg, ec2Params
+    console.log util.inspect(ec2Params, false, null)
+
     ec2.describeInstances ec2Params, (err, res) ->
         if err
           console.log util.inspect(err, false, null)
           cb(err)
         else
-          # the Reservations data will contain *at least* all the instances we're filtering on, and possibly any other instances that were created/stopped/started in the same command
-          # thus we can safely ignore the existence of additional Reservations in this check because we know the ones we care about will be in here if all filter criteria are successfully met
           if res.Reservations.length >= instances.length
+            console.log util.inspect(res.Reservations, false, null)
             cb(null)
           else
             console.log res.Reservations.length
