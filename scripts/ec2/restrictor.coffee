@@ -39,19 +39,22 @@ restrictor =
 
     ec2Params = restrictor.addInstanceFilter msg, ec2Params, instances
     ec2Params = restrictor.addSubnetFilter msg, ec2Params
+    console.log "Passing these ec2Params..."
     console.log util.inspect(ec2Params, false, null)
 
     ec2.describeInstances ec2Params, (err, res) ->
         if err
+          console.log "Error in describe Instances"
           console.log util.inspect(err, false, null)
           cb(err)
         else
           if res.Reservations.length >= instances.length
+            console.log "Operation authorized... result:"
             console.log util.inspect(res.Reservations, false, null)
             cb(null)
           else
-            console.log res.Reservations.length
-            console.log util.inspect(res.Reservations, false, null)
+            console.log "Operation not authorized... #{res.Reservations.length} result(s) found. Result:"
+            console.log util.inspect(res, false, null)
             cb("Operation not permitted. Instance #{instances} does not exist in the approved subnet or wasn't created by you")
 
 module.exports = restrictor
