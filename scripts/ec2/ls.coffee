@@ -149,7 +149,7 @@ handle_instances = (robot) ->
         if err
           msg_room(err)
         else
-          tags.removeSchedule(msg, instanceIdsToStop)
+          tags.removeSchedule(null, instanceIdsToStop)
 
 
 handle_ec2_instance = (robot) ->
