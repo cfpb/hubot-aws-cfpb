@@ -21,39 +21,38 @@ util = require 'util'
 ec2 = require('../../ec2.coffee')
 
 
-reserveIfAuthorized = (msg, instances, reservation, err) ->
-  return (err) ->
-    return msg.send "Error! #{err}" if err
-    tags.addReservation(msg, instances, reservation)
-    msg.send "Schedule added to #{instances}. Those instances will now start and stop on a schedule of #{schedule}"
+reserveIfAuthorized = (msg, instance, reservation) ->
+  tags.addReservation(msg, instance, reservation)
+  msg.send "Reservation added to #{instance}. #{reservation} "
 
 
 
 #credit: https://github.com/yoheimuta/hubot-aws/blob/master/scripts/ec2/create_tags.coffee
 getReservationTags = (args) ->
 
-  reservationUser = /--ReservatonUser=(\d*?)( |$)/.exec(args)
-  reservationTime = Date.now()
-  reservationBranch = /--ReservationBranch=(\d*?)( |$)/.exec(args)
-  reservationDescription = /--ReservationDescription=(\d*?)( |$)/.exec(args)
+  console.log(args)
+  reservationUser = /--ReservationUser=(\w+)( |$)/.exec(args)[1]
+  reservationTime = Date.now().toString()
+  reservationBranch = /--ReservationBranch=(\w+)( |$)/.exec(args)[1]
+  reservationDescription = /--ReservationDescription="(.*?)"/.exec(args)[1]
 
-  tags = [
+  reservationTags = [
     { Key: 'ReservationUser', Value: reservationUser },
     { Key: 'ReservationTime', Value: reservationTime },
     { Key: 'ReservationBranch', Value: reservationBranch },
+
     { Key: 'ReservationDescription', Value:  reservationDescription}
   ]
-
-  return tags
+  return reservationTags
 
 module.exports = (robot) ->
   robot.respond /ec2 reserve (.*)$/i, (msg) ->
 
-    instances = createInstancesArray(msg.match[1])
-    return msg.send "One or more instance_ids are required" if instances.length < 1
+    instance = msg.match[1].split(/\s+/)[0]
 
     reservation = getReservationTags(msg.match[1])
 
     arg_params = restrictor.addUserCreatedFilter(msg, {})
-    restrictor.authorizeOperation(msg, arg_params, instances, reserveIfAuthorized(msg, instances, reservation))
+#    restrictor.authorizeOperation(msg, arg_params, instance, reserveIfAuthorized(msg, instance, reservation))
+    reserveIfAuthorized(msg, instance, reservation)
 
