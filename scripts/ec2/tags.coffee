@@ -18,8 +18,6 @@ tags =
 
   addReservation:(msg, instance, content) ->
     ec2.createTags {Resources: [instance], Tags: content}, (err, res) ->
-      if err
-        console.log "Error creating tags: #{err}"
         if msg
           return msg.send "Error creating tags: #{err}" if err
   
