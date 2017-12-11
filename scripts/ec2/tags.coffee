@@ -16,5 +16,11 @@ tags =
   removeSchedule: (msg, instances) ->
     return tags.addSchedule(msg, instances, "")
 
+  addReservation:(msg, instance, content) ->
+    ec2.createTags {Resources: [instance], Tags: content}, (err, res) ->
+        if msg
+          return msg.send "Error creating tags: #{err}" if err
+  
+
 module.exports = tags
 
