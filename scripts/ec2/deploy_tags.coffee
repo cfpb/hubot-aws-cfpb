@@ -22,7 +22,7 @@ RESERVE_TAGS = {
 
 reserveForDeploy = (msg, instance, reservation) ->
   tags.addReservation(msg, instance, reservation)
-  msg.send "Reservation added to #{instance}. #{reservation} "
+  msg.send "Reservation added to #{instance}."
 
 getReservationTags = (args) ->
   reservationUser = ///--#{RESERVE_TAGS.user}=(.*?)( |$)///.exec(args)[1]
