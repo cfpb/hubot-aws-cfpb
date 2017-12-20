@@ -25,9 +25,9 @@ reserveForDeploy = (msg, instance, reservation) ->
   msg.send "Reservation added to #{instance}."
 
 getReservationTags = (args) ->
-  reservationUser = ///--#{RESERVE_TAGS.user}=(.*?)( |$)///.exec(args)[1]
+  reservationUser = ///--#{RESERVE_TAGS.user}=(.*?)(\s+|$)///.exec(args)[1]
   reservationTime = Date.now().toString()
-  reservationBranch = ///--#{RESERVE_TAGS.branch}=(.*?)( |$)///.exec(args)[1]
+  reservationBranch = ///--#{RESERVE_TAGS.branch}=(.*?)(\s+|$)///.exec(args)[1]
   reservationDescription = ///--#{RESERVE_TAGS.description}="(.*?)"///.exec(args)[1]
   [
     {Key: RESERVE_TAGS.user, Value: reservationUser},
