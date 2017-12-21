@@ -10,7 +10,7 @@ _ = require 'underscore'
 ec2 = require('../../ec2.coffee')
 moment = require 'moment'
 tags = require './tags'
-AsciiTable = require('ascii-table')
+mdTable = require('markdown-table')
 
 
 RESERVE_TAGS = {
@@ -55,15 +55,24 @@ formatReservationsList = (instances) ->
     } for i in instances
   ).sort (a, b) -> parseInt(a.resTime) - parseInt(b.resTime)
 
-  table = new AsciiTable()
-  table.setHeading 'id', 'name', 'IP address', 'status', 'user', 'reserved time',
-    'branch', 'comment'
-  rows.forEach (r) ->
-    table.addRow r.id, r.name, r.ip, r.state, r.resUser,
-      moment(parseInt(r.resTime)).format("MMM Do YYYY, h:mm a"),
-      r.resBranch, r.resDescrip
-
-  '```\n' + table.toString() + '\n```\n'
+  timeFmt = "MMM Do YYYY, h:mm a"
+  tableHead = [
+    'id', 'name', 'IP address', 'user', 'reserved time', 'branch', 'comment', 'status'
+  ]
+  tableRows = (
+    [
+      r.id,
+      r.name,
+      r.ip,
+      r.resUser,
+      moment(parseInt(r.resTime)).format(timeFmt),
+      r.resBranch,
+      r.resDescrip,
+      r.state
+    ] for r in rows
+  )
+  tableRows.unshift tableHead
+  mdTable tableRows, {align: 'l'}
 
 module.exports = (robot) ->
   robot.respond /ec2 reserve (.*)$/i, (msg) ->
