@@ -64,7 +64,7 @@ formatReservationsList = (instances) ->
       resDescrip: getTag(i.Tags, RESERVE_TAGS.description),
       state: i.State.Name,
     } for i in instances
-  ).sort (a, b) -> parseInt(a.resTime) - parseInt(b.resTime)
+  ).sort (a, b) -> a.id > b.id
 
   timeFmt = "MMM Do YYYY, h:mm a"
   tableHead = [
