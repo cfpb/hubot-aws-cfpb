@@ -3,6 +3,7 @@
 #
 # Commands:
 #   hubot ec2 reserve <instance-id-nickname> <branch-name> <reservation comment> - Reserve an instance
+#   hubot ec2 unreserve <instance-id-nickname> - Unreserve an instance
 #   hubot ec2 reserve-ls - Displays a list of currently reserved instances
 #
 
@@ -96,6 +97,19 @@ module.exports = (robot) ->
     else
       tags.addReservation(msg, INSTANCE_ID_MAP[instance], reservationTags)
       msg.send "Reservation added to #{instance}."
+
+  robot.respond /ec2 unreserve (.*)$/i, (msg) ->
+    instance = msg.match[1].trim().split(/\s+/)[0]
+    if !INSTANCE_ID_MAP[instance]
+      return msg.send "Unknown instance: #{instance}"
+    reservationTags = [
+      {Key: RESERVE_TAGS.user, Value: "--"},
+      {Key: RESERVE_TAGS.time, Value: Date.now().toString()},
+      {Key: RESERVE_TAGS.branch, Value: "--"},
+      {Key: RESERVE_TAGS.description, Value: "--"},
+    ]
+    tags.addReservation(msg, INSTANCE_ID_MAP[instance], reservationTags)
+    msg.send "Unreserved instance: #{instance}."
 
   robot.respond /ec2 reserve-ls$/i, (msg) ->
     params = {
