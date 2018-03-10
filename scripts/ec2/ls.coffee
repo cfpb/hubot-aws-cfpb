@@ -16,6 +16,7 @@
 #   hubot ec2 windows - Displays instances running the Windows OS
 #
 gist = require 'quick-gist'
+mdTable = require('markdown-table')
 moment = require 'moment'
 _ = require 'underscore'
 tsv = require 'tsv'
@@ -164,52 +165,58 @@ ec2_setup_polling = (robot) ->
 
 messages_from_ec2_instances = (instances) ->
   messages = []
-  for instance in instances
-    name = '[NoName]'
-    for tag in instance.Tags when tag.Key is 'Name'
-      name = tag.Value
-    description = ''
-    for tag in instance.Tags when tag.Key is 'Description'
-      description = tag.Value
-    expiration = ''
-    for tag in instance.Tags when tag.Key is 'ExpireDate'
-      expiration = tag.Value
-    schedule = ''
-    for tag in instance.Tags when tag.Key is 'Schedule'
-      schedule = tag.Value
-    backup = '[None]'
-    for tag in instance.Tags when tag.Key is 'Backup'
-      backup = tag.Value
-    creator = '[None]'
-    for tag in instance.Tags when tag.Key is 'Creator'
-      creator = tag.Value
 
+  getTag = (_tags, tag) -> _.first(t.Value for t in _tags when t.Key is tag) || ''
+
+  for instance in instances
     messages.push({
       time: moment(instance.LaunchTime).format('YYYY-MM-DD')
       state: instance.State.Name
       id: instance.InstanceId
       type: instance.InstanceType
       ip: instance.PrivateIpAddress
-      name: name || '[NoName]'
-      description: description || ''
-      expiration: expiration || ''
-      schedule: schedule || ''
-      backup: backup || '[None]'
-      creator: creator
+      name: getTag(instance.Tags, 'Name') || '[NoName]'
+      description: getTag(instance.Tags, 'Description') || ''
+      expiration: getTag(instance.Tags, 'ExpireDate') || ''
+      schedule: getTag(instance.Tags, 'Schedule') || ''
+      backup: getTag(instance.Tags, 'Backup') || '[None]'
+      creator: getTag(instance.Tags, 'Creator') || '[None]'
     })
 
   messages.sort (a, b) ->
     moment(a.time) - moment(b.time)
 
-  resp = ""
   if messages.length
-    resp = "\n| id | ip | name | creator | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-
-    for m in messages
-      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{creator} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{m.backup} | \n"
-
-    resp += "---\n"
-    return resp
+    tableHead = [
+      'id',
+      'ip',
+      'name',
+      'creator',
+      'state',
+      'description',
+      'type',
+      'launched',
+      'expires',
+      'schedule',
+      'backup',
+    ]
+    tableRows = (
+      [
+        m.id,
+        m.ip,
+        m.name,
+        m.creator,
+        m.state,
+        m.description,
+        m.type,
+        m.time,
+        m.expiration,
+        m.schedule,
+        m.backup,
+      ] for m in messages
+    )
+    tableRows.unshift tableHead
+    return mdTable tableRows, {align: 'l'}
   else
     return "\n[None]\n"
 
