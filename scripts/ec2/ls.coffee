@@ -180,6 +180,9 @@ messages_from_ec2_instances = (instances) ->
     backup = '[None]'
     for tag in instance.Tags when tag.Key is 'Backup'
       backup = tag.Value
+    creator = '[None]'
+    for tag in instance.Tags when tag.Key is 'Creator'
+      creator = tag.Value
 
     messages.push({
       time: moment(instance.LaunchTime).format('YYYY-MM-DD')
@@ -192,6 +195,7 @@ messages_from_ec2_instances = (instances) ->
       expiration: expiration || ''
       schedule: schedule || ''
       backup: backup || '[None]'
+      creator: creator
     })
 
   messages.sort (a, b) ->
@@ -199,10 +203,10 @@ messages_from_ec2_instances = (instances) ->
 
   resp = ""
   if messages.length
-    resp = "\n| id | ip | name | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    resp = "\n| id | ip | name | creator | state | description | type | launched | expires | schedule | backup |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
 
     for m in messages
-      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{m.backup} | \n"
+      resp += "| #{m.id} | #{m.ip} | #{m.name} | #{creator} | #{m.state} | #{m.description} | #{m.type} | #{m.time} | #{m.expiration} | #{m.schedule} | #{m.backup} | \n"
 
     resp += "---\n"
     return resp
