@@ -217,7 +217,8 @@ handle_sending_message = (msg, messages) ->
   if messages.length < 1000
     msg.send messages
   else
-    gist {content: messages, enterpriseOnly: true}, (err, resp, data) ->
+    gistOpts = {content: messages, enterpriseOnly: true, fileExtension: 'md'}
+    gist gistOpts, (err, resp, data) ->
       url = data.html_url
       msg.send "View instances at: " + url
 
