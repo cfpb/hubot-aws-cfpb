@@ -2,11 +2,12 @@
 #   Commands for reserving ec2 instances and listing existing reservations
 #
 # Commands:
-#   hubot ec2 reserve <instance_id>  --ReservationUser=<username> --ReservationBranch=<branch> --ReservationDescription="description text"
+#   hubot ec2 reserve <instance-id-nickname> <branch-name> <reservation comment> - Reserve an instance
 #   hubot ec2 reserve-ls - Displays a list of currently reserved instances
 #
 
 _ = require 'underscore'
+cson = require 'cson'
 ec2 = require('../../ec2.coffee')
 moment = require 'moment'
 tags = require './tags'
@@ -20,21 +21,31 @@ RESERVE_TAGS = {
   description: 'ReservationDescription',
 }
 
-reserveForDeploy = (msg, instance, reservation) ->
-  tags.addReservation(msg, instance, reservation)
-  msg.send "Reservation added to #{instance}."
+RESERVE_CONFIG_ENV_VAR = "HUBOT_AWS_RESERVE_CONFIG"
 
-getReservationTags = (args) ->
-  reservationUser = ///--#{RESERVE_TAGS.user}=(.*?)(\s+|$)///.exec(args)[1]
-  reservationTime = Date.now().toString()
-  reservationBranch = ///--#{RESERVE_TAGS.branch}=(.*?)(\s+|$)///.exec(args)[1]
-  reservationDescription = ///--#{RESERVE_TAGS.description}="(.*?)"///.exec(args)[1]
-  [
-    {Key: RESERVE_TAGS.user, Value: reservationUser},
-    {Key: RESERVE_TAGS.time, Value: reservationTime},
-    {Key: RESERVE_TAGS.branch, Value: reservationBranch},
-    {Key: RESERVE_TAGS.description, Value: reservationDescription},
-  ]
+try
+  INSTANCE_ID_MAP = cson.parseCSONFile process.env[RESERVE_CONFIG_ENV_VAR]
+catch e
+  # TODO switch to `robot.logger()` here _without_ constantly reparsing config file
+  if e.name == "TypeError"
+    console.log "#{RESERVE_CONFIG_ENV_VAR} is not defined"
+  else
+    console.log "#{RESERVE_CONFIG_ENV_VAR} could not be loaded " +
+                "(#{process.env.HUBOT_AWS_RESERVE_CONFIG})"
+  INSTANCE_ID_MAP = {}
+
+
+getReservationTags = (msg) ->
+  args = if msg.match[1] then msg.match[1].trim().split(/\s+/).slice(1) else []
+  if args.length < 2
+    []
+  else
+    [
+      {Key: RESERVE_TAGS.user, Value: msg.message.user.name},
+      {Key: RESERVE_TAGS.time, Value: Date.now().toString()},
+      {Key: RESERVE_TAGS.branch, Value: args[0]},
+      {Key: RESERVE_TAGS.description, Value: args.slice(1).join(" ")},
+    ]
 
 formatReservationsList = (instances) ->
   if not instances.length
@@ -42,33 +53,31 @@ formatReservationsList = (instances) ->
 
   getTag = (_tags, tag) -> _.first(t.Value for t in _tags when t.Key is tag) || ''
 
+  instanceMap = _.invert(INSTANCE_ID_MAP)
+
   rows = (
     {
-      id: i.InstanceId,
-      name: getTag(i.Tags, 'Name'),
-      ip: i.PrivateIpAddress,
-      state: i.State.Name,
+      id: instanceMap[i.InstanceId] || "UNKNOWN",
       resUser: getTag(i.Tags, RESERVE_TAGS.user),
       resTime: getTag(i.Tags, RESERVE_TAGS.time),
       resBranch: getTag(i.Tags, RESERVE_TAGS.branch),
-      resDescrip: getTag(i.Tags, RESERVE_TAGS.description)
+      resDescrip: getTag(i.Tags, RESERVE_TAGS.description),
+      state: i.State.Name,
     } for i in instances
   ).sort (a, b) -> parseInt(a.resTime) - parseInt(b.resTime)
 
   timeFmt = "MMM Do YYYY, h:mm a"
   tableHead = [
-    'id', 'name', 'IP address', 'user', 'reserved time', 'branch', 'comment', 'status'
+    'instance', 'user', 'reserved time', 'branch', 'comment', 'status'
   ]
   tableRows = (
     [
       r.id,
-      r.name,
-      r.ip,
       r.resUser,
       moment(parseInt(r.resTime)).format(timeFmt),
       r.resBranch,
       r.resDescrip,
-      r.state
+      r.state,
     ] for r in rows
   )
   tableRows.unshift tableHead
@@ -76,9 +85,17 @@ formatReservationsList = (instances) ->
 
 module.exports = (robot) ->
   robot.respond /ec2 reserve (.*)$/i, (msg) ->
-    instance = msg.match[1].split(/\s+/)[0]
-    reservation = getReservationTags(msg.match[1])
-    reserveForDeploy(msg, instance, reservation)
+    instance = msg.match[1].trim().split(/\s+/)[0]
+    if !INSTANCE_ID_MAP[instance]
+      validInstanceIDs = Object.keys(INSTANCE_ID_MAP).join(", ")
+      return msg.send "Unknown instance nickname. Choose from: #{validInstanceIDs}"
+
+    reservationTags = getReservationTags(msg)
+    if !reservationTags.length
+      msg.send "Cannot reserve: please provide a branch and a comment"
+    else
+      tags.addReservation(msg, INSTANCE_ID_MAP[instance], reservationTags)
+      msg.send "Reservation added to #{instance}."
 
   robot.respond /ec2 reserve-ls$/i, (msg) ->
     params = {
