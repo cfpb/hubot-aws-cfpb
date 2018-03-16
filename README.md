@@ -71,5 +71,46 @@ cfpbot ec2 extend [instance_id]
 This command will add two weeks to the expiration date of an ec2-instance created by cfpbot.
 * instance_id - The instance id of the ec2 instance which you can get from the `List Instances` commands.
 
+### Reserve instances
 
+```
+cfpbot ec2 reserve [instance_id_nickname] [branch name] [reservation comment]
+cfpbot ec2 unreserve [instance_id_nickname]
+cfpbot ec2 reserve-ls
+```
 
+These three commands help coordinate ad hoc reservations of shared EC2 instances
+within a team or department. Consider a scenario where a team has a set of three
+staging/QA boxes that have topic branches deployed to them: coordinating
+who is using what can quickly become painful. These commands attempt to help
+with this problem by using EC2 tags to track the state of a pre-defined set of
+reservable instances.
+
+Define your instances-for-reservation in a JSON file kept in the bot's root (
+point the bot to this file via the `HUBOT_AWS_RESERVE_CONFIG` env var):
+
+```json
+{
+  "staging1": "i-EC2-INSTANCE-ID-HERE",
+  "staging2": "i-EC2-INSTANCE-ID-HERE",
+  "staging3": "i-EC2-INSTANCE-ID-HERE",
+}
+```
+
+You'd then reserve an instance like:
+
+```
+cfpbot ec2 reserve staging1 my-branch-name testing this new cool feature
+```
+
+When you are done testing:
+
+```
+cfpbot ec2 unreserve staging1
+```
+
+Check the status of the instances to see what's available:
+
+```
+cfpbot ec2 reserve-ls
+```
