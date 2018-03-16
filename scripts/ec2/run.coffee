@@ -177,10 +177,8 @@ module.exports = (robot) ->
           type  = ins.InstanceType
           for network in ins.NetworkInterfaces
             ip  = network.PrivateIpAddress
-          for tag in ins.Tags when tag.Key is 'Name'
-            name = tag.Value || '[NoName]'
 
-          messages.push("#{state}\t#{id}\t#{type}\t#{ip}\t#{name}")
+          messages.push("#{state}\t#{id}\t#{type}\t#{ip}\t#{aws_instance_name}")
           messages.push("\nIn about 10 minutes, you should be able to ssh in with ssh ec2-user@#{ip}\n")
           messages.push("\nThis instance defaults to running between 8 AM and 6 PM. You can change that schedule with the `ec2 schedule` command. See `bot help ec2 schedule` for details\n")
 
