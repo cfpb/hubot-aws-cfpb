@@ -216,7 +216,8 @@ messages_from_ec2_instances = (instances) ->
       ] for m in messages
     )
     tableRows.unshift tableHead
-    return mdTable tableRows, {align: 'l'}
+    table = mdTable tableRows, {align: 'l'}
+    return "\n#{table}"
   else
     return "\n[None]\n"
 
