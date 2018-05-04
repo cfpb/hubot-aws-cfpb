@@ -178,7 +178,7 @@ messages_from_ec2_instances = (instances) ->
       name: getTag(instance.Tags, 'Name') || '[NoName]'
       description: getTag(instance.Tags, 'Description') || ''
       expiration: getTag(instance.Tags, 'ExpireDate') || ''
-      schedule: getTag(instance.Tags, 'Schedule') || ''
+      schedule: getTag(instance.Tags, tags.SCHEDULE_TAG) || ''
       backup: getTag(instance.Tags, 'Backup') || '[None]'
       creator: getTag(instance.Tags, 'Creator') || '[None]'
     })

@@ -21,6 +21,8 @@ fs   = require 'fs'
 cson = require 'cson'
 util = require 'util'
 
+tags = require './tags'
+
 
 getArgParams = (arg) ->
   dry_run = if arg.match(/--dry-run/) then true else false
@@ -151,7 +153,7 @@ module.exports = (robot) ->
       { Key: 'Software', Value: '' },
       { Key: 'BusinessOwner', Value: process.env.HUBOT_AWS_DEFAULT_CREATOR_EMAIL || "unknown" },
       { Key: 'SysAdmin', Value: user_email },
-      { Key: 'Schedule', Value: '8:18' },
+      { Key: tags.SCHEDULE_TAG, Value: tags.formatSchedule(tags.DEFAULT_SCHEDULE) },
       { Key: 'CreatedByApplication', Value: 'chat' },
       { Key: 'CreateDate', Value: "#{yyyy}-#{mm}-#{dd}"},
       { Key: 'ExpireDate', Value: "#{expyyyy}-#{expmm}-#{expdd}"}
