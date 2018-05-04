@@ -22,13 +22,13 @@ DEFAULT_SCHEDULE_START = 8
 DEFAULT_SCHEDULE_STOP = 18
 
 createInstancesArray = (instance_ids) ->
-    instances = []
-    instance_ids = instance_ids.replace /^\s+|\s+$/g, ""
-    for i in instance_ids.split /\s+/
-      if i and i.match(/^i-/)
-        instances.push(i)
+  instances = []
+  instance_ids = instance_ids.replace /^\s+|\s+$/g, ""
+  for i in instance_ids.split /\s+/
+    if i and i.match(/^i-/)
+      instances.push(i)
 
-    return instances
+  return instances
 
 scheduleIfAuthorized = (msg, instances, schedule, err) ->
   return (err) ->
@@ -66,9 +66,8 @@ module.exports = (robot) ->
     restrictor.authorizeOperation(msg, arg_params, instances, scheduleIfAuthorized(msg, instances, schedule))
 
   robot.respond /ec2 unschedule(.*)$/i, (msg) ->
+    instances = createInstancesArray(msg.match[1])
+    return msg.send "One or more instance_ids are required" if instances.length < 1
 
-      instances = createInstancesArray(msg.match[1])
-      return msg.send "One or more instance_ids are required" if instances.length < 1
-
-      arg_params = restrictor.addUserCreatedFilter(msg, {})
-      restrictor.authorizeOperation(msg, arg_params, instances, unscheduleIfAuthorized(msg, instances))
+    arg_params = restrictor.addUserCreatedFilter(msg, {})
+    restrictor.authorizeOperation(msg, arg_params, instances, unscheduleIfAuthorized(msg, instances))
