@@ -37,7 +37,7 @@ tags =
       )
 
     ec2.createTags(
-      {Resources: instances, Tags: [Key: SCHEDULE_TAG, Value: scheduleFmt]},
+      {Resources: instances, Tags: [Key: tags.SCHEDULE_TAG, Value: scheduleFmt]},
       (err, res) ->
         if err
           console.log "Error creating tags: #{err}"
