@@ -30,7 +30,7 @@ tags =
 
   addSchedule: (msg, instances, schedule = tags.DEFAULT_SCHEDULE) ->
     try
-      scheduleFmt = tags.formatSchedule schedule
+      scheduleFmt = if schedule then tags.formatSchedule(schedule) else ""
     catch e
       return msg.send(
         "Error parsing schedule; verify correct 24-hour format (eg '8:18')."
