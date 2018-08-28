@@ -104,9 +104,9 @@ extract_message = (instances, msg)->
   return msg + messages_from_ec2_instances(instances)
 
 get_instance_tag = (instance, key, default_value = "")->
-  tags = _.filter(instance.Tags, (tag)-> return tag.Key == key)
-  if not _.isEmpty(tags)
-    return tags[0].Value
+  tags_ = _.filter(instance.Tags, (tag)-> return tag.Key == key)
+  if not _.isEmpty(tags_)
+    return tags_[0].Value
   else
     return default_value
 
