@@ -2,8 +2,8 @@
 #   Provides conveniences around certain tags we want to manage
 #
 # Commands:
-#   hubot ec2 schedule <instance_id> [<instance_id> ...] --start=start_hour --stop=stop_hour Adds an appropriate Schedule tag to the instance(s). Start and stop default to 8 AM to 6 PM
-#   hubot ec2 unschedule <instance_id> [<instance_id> ...] Removes the Schedule tag from the instance(s)
+#   hubot ec2 schedule <instance_id> [<instance_id> ...] --start=start_hour --stop=stop_hour Adds an appropriate Schedule tag to the Instance(s). Start and stop default to 8 AM to 6 PM
+#   hubot ec2 unschedule <instance_id> [<instance_id> ...] Removes the Schedule tag from the Instance(s)
 #
 # Notes:
 #   instance_id : [required] The ID of one or more instances to modify tags. For example, i-0acec691.

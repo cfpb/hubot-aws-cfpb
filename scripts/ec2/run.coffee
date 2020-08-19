@@ -8,7 +8,7 @@
 #   HUBOT_AWS_EC2_REQUIRE_SSH_KEY: [optional] Require that a user have a public SSH key saved to their chat account. See https://github.com/catops/catops-keys
 #
 # Commands:
-#   hubot ec2 run - Run an Instance
+#   hubot ec2 run <instance_name> <instance_description> - Run an Instance; <instance_name> sets the Name tag, <instance_description> sets the Description tag
 #
 # Notes:
 #   --image_id=***      : [optional] The ID of the AMI. If omit it, the ImageId of config is used

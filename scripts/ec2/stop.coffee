@@ -2,7 +2,7 @@
 #   Stop ec2 instance
 #
 # Commands:
-#   hubot ec2 stop <instance_id> [<instance_id> ...] Stop the instances
+#   hubot ec2 stop <instance_id> [<instance_id> ...] Stop the Instances
 #
 # Notes:
 #   instance_id : [required] The ID of one or more instances to stop. For example, i-0acec691.

@@ -2,9 +2,9 @@
 #   Commands for reserving ec2 instances and listing existing reservations
 #
 # Commands:
-#   hubot ec2 reserve <instance-id-nickname> <branch-name> <reservation comment> - Reserve an instance
-#   hubot ec2 unreserve <instance-id-nickname> - Unreserve an instance
-#   hubot ec2 reserve-ls - Displays a list of currently reserved instances
+#   hubot ec2 reserve <instance-id-nickname> <branch-name> <reservation comment> - Reserve an Instance
+#   hubot ec2 unreserve <instance-id-nickname> - Unreserve an Instance
+#   hubot ec2 reserve-ls - Displays a list of currently reserved Instances
 #
 
 _ = require 'underscore'
