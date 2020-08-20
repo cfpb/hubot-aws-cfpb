@@ -84,26 +84,6 @@ module.exports = (robot) ->
     if !!process.env.HUBOT_AWS_EC2_REQUIRE_SSH_KEY and !ssh_key.length
       return msg.send "You need to set your SSH *public* key first. To do so, copy your ~/.ssh/id_rsa.pub into your clipboard, and then in chat say `#{robot.name} my public key is [your_ssh_key]`"
 
-    userData = """
-      #!/bin/bash
-      echo 'UserData inside of run.coffee'
-      echo 'Copying user public key into authorized_keys'
-      echo '#{ssh_key}' >> /home/ec2-user/.ssh/authorized_keys
-    """
-    init_file = ""
-
-    userdata_path ||= process.env.HUBOT_AWS_EC2_RUN_USERDATA_PATH
-    if fs.existsSync userdata_path
-      init_file = fs.readFileSync userdata_path, 'utf-8'
-      # params.UserData = new Buffer(init_file).toString('base64')
-
-    userData += "\n" + init_file
-    console.log "UserData is " + userData
-    buf = new Buffer(userData)
-
-
-    params.UserData = buf.toString('base64')
-    msg.send "Requesting image_id=#{image_id}, config_path=#{config_path}, userdata_path=#{userdata_path}, dry-run=#{dry_run}..."
 
     curr_value = 0
     aws_instance_name = ""
@@ -122,6 +102,31 @@ module.exports = (robot) ->
       msg.send "An AWS instance name is required"
       msg.send "Example usage: ec2 run test_instance this is my description"
       return
+
+    userData = """
+      #!/bin/bash
+      echo 'UserData inside of run.coffee'
+      echo 'Copying user public key into authorized_keys'
+      echo '#{ssh_key}' >> /home/ec2-user/.ssh/authorized_keys
+
+      export INSTANCE_NAME=#{aws_instance_name}
+    """
+    init_file = ""
+
+    userdata_path ||= process.env.HUBOT_AWS_EC2_RUN_USERDATA_PATH
+    if fs.existsSync userdata_path
+      init_file = fs.readFileSync userdata_path, 'utf-8'
+      # params.UserData = new Buffer(init_file).toString('base64')
+
+    userData += "\n" + init_file
+    console.log "UserData is " + userData
+    buf = new Buffer(userData)
+
+
+    params.UserData = buf.toString('base64')
+    msg.send "Requesting image_id=#{image_id}, config_path=#{config_path}, userdata_path=#{userdata_path}, dry-run=#{dry_run}..."
+
+
 
     # TODO: yank this out into functions; replace with moment.js goodness
     today = new Date
@@ -180,8 +185,9 @@ module.exports = (robot) ->
           for network in ins.NetworkInterfaces
             ip  = network.PrivateIpAddress
 
-          messages.push("#{state}\t#{id}\t#{type}\t#{ip}\t#{aws_instance_name}")
+          messages.push("\n#{state}\t#{id}\t#{type}\t#{ip}\t#{aws_instance_name}\n")
           messages.push("\nIn about 10 minutes, you should be able to ssh in with ssh ec2-user@#{ip}\n")
+          messages.push("\n**Note**: it'll be yum updating and applying hardening configs for 20+ minutes, but it should be usable during that time\n")
           messages.push("\nThis instance defaults to running between 8 AM and 6 PM. You can change that schedule with the `ec2 schedule` command. See `bot help ec2 schedule` for details\n")
 
         messages.sort()
